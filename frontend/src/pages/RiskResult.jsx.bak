@@ -1,0 +1,331 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import API from '../services/api';
+
+function RiskResult() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
+  useEffect(() => {
+    const fetchResult = async () => {
+      try {
+        const res = await API.get(`/reports/${id}`);
+        setResult(res.data);
+      } catch (error) {
+        console.error("Error fetching result", error);
+        if (error.response?.status === 401) {
+          setError('Your session has expired. Please log in again.');
+        } else if (error.response?.status === 404) {
+          setError('Risk result not found.');
+        } else {
+          setError('Unable to load the risk result. Please check the backend connection.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchResult();
+  }, [id]);
+
+  if (loading) return <div>Loading result...</div>;
+  if (error) return <div className="page-state error-message" role="alert">{error}</div>;
+  if (!result) return <div className="page-state">Risk result not found.</div>;
+
+  const riskColor = result.riskLevel === 'HIGH' ? '#e74c3c' : result.riskLevel === 'MEDIUM' ? '#f59e0b' : '#10b981';
+  const nearbyUtilities = result.nearbyUtilities || [];
+  const models = result.models || {};
+
+  const handlePrintPdf = () => {
+    window.print();
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h2>Excavation Safety & Hazard Assessment</h2>
+          <p className="text-muted" style={{ margin: 0 }}>Practical decision-support summary for field construction workers and safety supervisors.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-secondary" onClick={handlePrintPdf} style={{ marginTop: 0 }}>
+            🖨️ PRINT / SAVE AS PDF
+          </button>
+          <button className="btn-primary" onClick={() => navigate('/reports')} style={{ marginTop: 0, width: 'auto' }}>
+            VIEW ALL REPORTS
+          </button>
+        </div>
+      </div>
+      
+      <div className="panel" style={{borderTop: `6px solid ${riskColor}`}}>
+        
+        {/* Top Header Card: Hazard Score out of 100 & Risk Classification */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: result.riskLevel === 'HIGH' ? '#fef2f2' : result.riskLevel === 'MEDIUM' ? '#fffbeb' : '#f0fdf4',
+          border: `1px solid ${result.riskLevel === 'HIGH' ? '#fecaca' : result.riskLevel === 'MEDIUM' ? '#fde68a' : '#bbf7d0'}`,
+          borderRadius: '10px',
+          padding: '20px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', fontWeight: 600 }}>
+              Overall Excavation Hazard Level
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', marginTop: '4px' }}>
+              <span style={{ fontSize: '2.5rem', fontWeight: 800, color: riskColor, lineHeight: 1 }}>
+                {result.hazardScore !== undefined ? result.hazardScore : 50}
+              </span>
+              <span style={{ fontSize: '1.2rem', color: '#64748b' }}>/ 100</span>
+              <span className={`badge badge-${result.riskLevel}`} style={{ fontSize: '1.1rem', padding: '6px 16px', fontWeight: 700 }}>
+                {result.riskLevel} RISK
+              </span>
+            </div>
+            <div className="text-muted" style={{ marginTop: '8px', fontSize: '0.85rem' }}>
+              Formula: <code>{result.hazardFormula || 'H = 0.50*P + 0.20*D + 0.15*V + 0.10*M + 0.05*G'}</code>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Assessment Record</div>
+            <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#1e293b' }}>{result.location}</div>
+            <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+              {new Date(result.createdAt).toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* Warning Banner */}
+        {result.riskLevel === 'HIGH' && (
+          <div className="workflow-message error-message" role="alert" style={{ background: '#fef2f2', borderLeft: '4px solid #ef4444', color: '#b91c1c', marginBottom: '20px' }}>
+            🚨 <strong>CRITICAL EXCAVATION HAZARD:</strong> Mechanical digging without non-destructive physical exposure poses high risk of striking underground utilities. Hand-digging or potholing is mandatory.
+          </div>
+        )}
+
+        {/* Actionable Safety Recommendations for Workers */}
+        <div style={{ marginBottom: '25px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '18px' }}>
+          <h4 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
+            🛡️ Recommended Safety Measures & Precautions
+          </h4>
+          <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: 1.6 }}>
+            {Array.isArray(result.safetyRecommendations) && result.safetyRecommendations.length > 0 ? (
+              result.safetyRecommendations.map((rec, idx) => (
+                <li key={idx} style={{ marginBottom: '8px', fontWeight: idx === 0 ? 600 : 400, color: idx === 0 && result.riskLevel === 'HIGH' ? '#dc2626' : '#334155' }}>
+                  {rec}
+                </li>
+              ))
+            ) : (
+              <>
+                <li>Conduct non-destructive physical verification (hand digging) before deploying heavy excavation machinery.</li>
+                <li>Verify site alignment with local utility authorities (BWSSB / BESCOM) prior to digging.</li>
+                <li>Stop digging immediately if unmapped tiles, warning tape, or pea gravel bedding are encountered.</li>
+              </>
+            )}
+          </ul>
+        </div>
+
+        {/* Site Parameters & Factor Breakdown Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '25px' }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+            <div className="text-muted" style={{ fontSize: '0.8rem' }}>Planned Excavation Depth</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>{result.depth} meters</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+              Depth Factor: {result.factors?.depthFactor ?? (Number(result.depth) / 2.0).toFixed(2)} (max 1.0)
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+            <div className="text-muted" style={{ fontSize: '0.8rem' }}>Search Zone Radius</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>{result.radius} meters</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+              Coords: {Number(result.latitude).toFixed(4)}, {Number(result.longitude).toFixed(4)}
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+            <div className="text-muted" style={{ fontSize: '0.8rem' }}>Closest Confirmed Asset</div>
+            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#0284c7', marginTop: '4px' }}>
+              {nearbyUtilities.length > 0 ? `${nearbyUtilities[0].distance}m` : 'None in radius'}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+              {nearbyUtilities.length > 0 ? `${nearbyUtilities[0].source || 'BWSSB'} ${nearbyUtilities[0].utilityType}` : 'No verified GIS records in radius'}
+            </div>
+          </div>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px' }}>
+            <div className="text-muted" style={{ fontSize: '0.8rem' }}>Sensor Baseline Mode</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#059669', marginTop: '4px' }}>Software Simulated</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+              Vibration: {result.sensorInformation?.vibration ?? 0.2} · Moisture: {result.sensorInformation?.soilMoisture ?? result.sensorInformation?.soilCondition ?? 0.3}
+            </div>
+          </div>
+        </div>
+
+        {/* Contributing Hazard Factors */}
+        {Array.isArray(result.contributingFactors) && result.contributingFactors.length > 0 && (
+          <div style={{ marginBottom: '25px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#334155' }}>Key Contributing Factors</h4>
+            <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem', color: '#475569' }}>
+              {result.contributingFactors.map((f, i) => (
+                <li key={i} style={{ marginBottom: '6px' }}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Utility Image Inspection Finding (if available) */}
+        {result.imageInspection?.performed && (
+          <div style={{ marginBottom: '25px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, color: '#0369a1' }}>📷 Visual Utility Inspection Finding</h4>
+              <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                {result.imageInspection.model || 'Faster R-CNN'}
+              </span>
+            </div>
+            <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: '#0c4a6e' }}>
+              {result.imageInspection.detectionCount > 0 ? (
+                `Identified ${result.imageInspection.detectionCount} visual object(s) matching underground utility features in uploaded site image.`
+              ) : (
+                'Site inspection image analyzed; no visible pipeline surface features or warning markers detected.'
+              )}
+            </p>
+            <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: '6px' }}>
+              Note: Image inspection is experimental and decision-support only; it does not replace underground utility records.
+            </div>
+          </div>
+        )}
+
+        {/* Nearby Mapped Utilities Details */}
+        <div style={{display: 'flex', gap: '30px', flexWrap: 'wrap', marginTop: '20px'}}>
+          <div style={{flex: 1, minWidth: '300px'}}>
+            <h4>Nearby Mapped Utilities ({nearbyUtilities.length})</h4>
+            <hr style={{margin: '10px 0', border: 'none', borderTop: '1px solid #eee'}} />
+            {nearbyUtilities.length > 0 ? (
+              <ul style={{listStyle: 'none'}}>
+                {nearbyUtilities.map((u, i) => (
+                  <li key={i} style={{marginBottom: '10px', padding: '8px 12px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0'}}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <strong>{u.source || 'BWSSB'} {u.utilityType}</strong>
+                      <span style={{ color: '#0284c7', fontWeight: 600 }}>{u.distance} m away</span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>Source: {u.dataSource || 'OpenCity / BWSSB KML'}</div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted">No utilities found within radius.</p>
+            )}
+          </div>
+
+          <div style={{flex: 1, minWidth: '300px'}}>
+            <h4>Sensor & Soil Environmental Context</h4>
+            <hr style={{margin: '10px 0', border: 'none', borderTop: '1px solid #eee'}} />
+            {result.sensorInformation ? (
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between'}}>
+                  <span>Surface Vibration (Simulated):</span>
+                  <strong>{result.sensorInformation.vibration}</strong>
+                </div>
+                <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between'}}>
+                  <span>Acoustic Waveform Level:</span>
+                  <strong>{result.sensorInformation.acousticLevel}</strong>
+                </div>
+                <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between'}}>
+                  <span>Soil Moisture & Condition:</span>
+                  <strong>{result.sensorInformation.soilMoisture ?? result.sensorInformation.soilCondition}</strong>
+                </div>
+                <div style={{marginBottom: '10px', display: 'flex', justifyContent: 'space-between'}}>
+                  <span>Atmospheric Gas Index:</span>
+                  <strong>{result.sensorInformation.gasReading ?? 0.05}</strong>
+                </div>
+                <div className="text-muted" style={{fontSize: '0.75rem', marginTop: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '8px'}}>
+                  Notice: Physical sensor inputs are software-simulated for safety evaluation; values do not represent IoT telemetry hardware.
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted">No sensor data recorded.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Optional Technical Details Toggle for Engineering / Evaluators */}
+        <div style={{ marginTop: '24px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
+          <button 
+            type="button" 
+            onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+            className="btn-secondary"
+            style={{ width: 'auto', padding: '8px 16px', fontSize: '0.85rem' }}
+          >
+            {showTechnicalDetails ? '▲ Hide Technical Machine Learning Details' : '▼ View Technical Machine Learning Details'}
+          </button>
+
+          {showTechnicalDetails && Object.keys(models).length > 0 && (
+            <div style={{ marginTop: '16px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0, color: '#1e293b' }}>Verified Machine Learning Models Evaluated</h4>
+                <span className="badge" style={{ background: result.agreement ? '#dcfce7' : '#fef3c7', color: result.agreement ? '#166534' : '#92400e' }}>
+                  {result.agreement ? 'Unanimous Model Agreement' : 'Majority Consensus'}
+                </span>
+              </div>
+              <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '12px' }}>
+                The ML models run behind the scenes as secondary validation. They evaluate 9/13 geospatial features against synthetic training distributions.
+              </p>
+              <table className="model-consensus-table">
+                <thead>
+                  <tr>
+                    <th>Model Algorithm</th>
+                    <th>Predicted Class</th>
+                    <th>Confidence / Probabilities</th>
+                    <th>Evaluation Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {['random_forest', 'xgboost', 'lightgbm'].map((mKey) => {
+                    const mData = models[mKey];
+                    if (!mData) {
+                      return (
+                        <tr key={mKey}>
+                          <td><strong>{mKey.replace('_', ' ').toUpperCase()}</strong></td>
+                          <td colSpan="3" style={{ color: '#94a3b8' }}>Not evaluated</td>
+                        </tr>
+                      );
+                    }
+                    const probs = Array.isArray(mData.classProbabilities) ? mData.classProbabilities : [];
+                    return (
+                      <tr key={mKey}>
+                        <td><strong>{mKey === 'random_forest' ? 'Random Forest' : mKey === 'xgboost' ? 'XGBoost' : 'LightGBM'}</strong></td>
+                        <td><span className={`badge badge-${mData.predictedClass.toUpperCase()}`}>{mData.predictedClass}</span></td>
+                        <td style={{ fontSize: '0.8rem' }}>
+                          {probs.map(p => `${p.label}: ${(p.probability * 100).toFixed(1)}%`).join(' | ')}
+                        </td>
+                        <td><span style={{ color: '#16a34a', fontSize: '0.8rem', fontWeight: 600 }}>Active Inference (3.10)</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: '24px', padding: '12px 16px', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.8rem', color: '#475569' }}>
+          <strong>Academic & Safety Disclaimer:</strong> {result.limitation || 'This evaluation is an AI decision-support report generated by the DigSafeAI pipeline. It is intended for excavation planning guidance and does not replace statutory agency utility clearances.'}
+        </div>
+        
+        <div style={{marginTop: '30px', display: 'flex', gap: '10px'}}>
+          <button className="btn-secondary" onClick={() => navigate('/risk-assessment')} style={{marginTop: 0}}>NEW ASSESSMENT</button>
+          <button className="btn-primary" onClick={() => navigate('/reports')} style={{marginTop: 0, width: 'auto', padding: '10px 20px'}}>VIEW ALL REPORTS</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default RiskResult;

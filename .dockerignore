@@ -1,0 +1,16 @@
+node_modules
+.venv
+__pycache__
+*.pyc
+.env
+.env.local
+playwright-report
+test-results
+ui_verification
+backups
+backup_phase1
+cleanup_quarantine*
+kml_ml_outputs
+kml_utm_final_outputs
+pipeline_outputs
+*.log

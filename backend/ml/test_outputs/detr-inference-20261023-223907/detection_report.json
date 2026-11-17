@@ -1,0 +1,1120 @@
+{
+  "status": "inference_completed",
+  "model_dir": "C:\\Users\\Pragathi BR\\OneDrive\\Desktop\\DigSafeAI_Project\\backend\\ml\\vision\\detr\\dataset2_detr_model",
+  "input_image": "C:\\Users\\Pragathi BR\\OneDrive\\Desktop\\DigSafeAI_Project\\backend\\ml\\test_images\\test.jpg",
+  "image_size_pixels": {
+    "width": 2136,
+    "height": 1403
+  },
+  "device": "cpu",
+  "confidence_threshold": 0.25,
+  "inference_seconds": 2.151,
+  "model_classes": {
+    "0": "pipe",
+    "1": "object"
+  },
+  "detection_count": 100,
+  "detections": [
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.30621999502182007,
+      "box_xyxy_pixels": [
+        182.11,
+        130.5,
+        362.35,
+        186.38
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.35618722438812256,
+      "box_xyxy_pixels": [
+        815.75,
+        7.67,
+        925.22,
+        81.32
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.45175835490226746,
+      "box_xyxy_pixels": [
+        125.19,
+        758.03,
+        687.71,
+        960.15
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.38038626313209534,
+      "box_xyxy_pixels": [
+        862.67,
+        1.02,
+        948.23,
+        63.2
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.36345240473747253,
+      "box_xyxy_pixels": [
+        664.46,
+        1.83,
+        934.78,
+        102.11
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.35049763321876526,
+      "box_xyxy_pixels": [
+        642.01,
+        3.39,
+        923.23,
+        143.54
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.34960415959358215,
+      "box_xyxy_pixels": [
+        729.6,
+        33.72,
+        854.74,
+        135.01
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33709871768951416,
+      "box_xyxy_pixels": [
+        602.15,
+        62.06,
+        694.87,
+        143.93
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3609616756439209,
+      "box_xyxy_pixels": [
+        651.05,
+        26.25,
+        729.58,
+        99.91
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.39371055364608765,
+      "box_xyxy_pixels": [
+        432.7,
+        12.4,
+        769.09,
+        128.78
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.48009395599365234,
+      "box_xyxy_pixels": [
+        1059.48,
+        1086.04,
+        1289.92,
+        1398.08
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.32996684312820435,
+      "box_xyxy_pixels": [
+        173.3,
+        134.37,
+        363.29,
+        232.35
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.32593271136283875,
+      "box_xyxy_pixels": [
+        1715.26,
+        25.12,
+        2055.77,
+        147.13
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3242748975753784,
+      "box_xyxy_pixels": [
+        1684.75,
+        23.72,
+        1757.28,
+        103.37
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3440552055835724,
+      "box_xyxy_pixels": [
+        755.53,
+        67.59,
+        848.37,
+        150.42
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.36646997928619385,
+      "box_xyxy_pixels": [
+        411.77,
+        26.15,
+        622.72,
+        148.05
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.37799665331840515,
+      "box_xyxy_pixels": [
+        422.27,
+        37.64,
+        565.88,
+        131.04
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.35307028889656067,
+      "box_xyxy_pixels": [
+        1609.85,
+        0.89,
+        1693.26,
+        63.77
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33603742718696594,
+      "box_xyxy_pixels": [
+        1685.28,
+        32.57,
+        1751.55,
+        100.27
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.35404518246650696,
+      "box_xyxy_pixels": [
+        434.62,
+        6.5,
+        945.19,
+        142.8
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3784352242946625,
+      "box_xyxy_pixels": [
+        605.68,
+        1003.5,
+        1777.9,
+        1390.59
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3648473918437958,
+      "box_xyxy_pixels": [
+        1082.76,
+        0.2,
+        1191.26,
+        59.57
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3455795347690582,
+      "box_xyxy_pixels": [
+        1988.0,
+        50.21,
+        2073.16,
+        123.06
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3366605341434479,
+      "box_xyxy_pixels": [
+        1986.94,
+        120.63,
+        2091.04,
+        195.45
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3461998403072357,
+      "box_xyxy_pixels": [
+        1010.09,
+        0.92,
+        1116.59,
+        70.08
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.34898045659065247,
+      "box_xyxy_pixels": [
+        1005.94,
+        4.01,
+        1148.06,
+        108.43
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33356180787086487,
+      "box_xyxy_pixels": [
+        1929.33,
+        42.23,
+        2032.17,
+        125.98
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3340882956981659,
+      "box_xyxy_pixels": [
+        548.14,
+        15.23,
+        800.39,
+        155.24
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.36827558279037476,
+      "box_xyxy_pixels": [
+        736.71,
+        7.48,
+        892.97,
+        92.22
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.29624128341674805,
+      "box_xyxy_pixels": [
+        180.19,
+        128.6,
+        368.91,
+        183.95
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.32581260800361633,
+      "box_xyxy_pixels": [
+        175.96,
+        131.75,
+        375.3,
+        318.65
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33469393849372864,
+      "box_xyxy_pixels": [
+        693.87,
+        62.88,
+        813.89,
+        155.07
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.4241783916950226,
+      "box_xyxy_pixels": [
+        148.91,
+        818.8,
+        619.08,
+        971.31
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3234582543373108,
+      "box_xyxy_pixels": [
+        1791.59,
+        33.03,
+        1866.81,
+        123.32
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3355979919433594,
+      "box_xyxy_pixels": [
+        1958.78,
+        56.78,
+        2072.79,
+        145.44
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3643149435520172,
+      "box_xyxy_pixels": [
+        707.87,
+        9.74,
+        881.95,
+        103.86
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3134567141532898,
+      "box_xyxy_pixels": [
+        1742.84,
+        26.54,
+        1864.56,
+        124.3
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33528637886047363,
+      "box_xyxy_pixels": [
+        434.95,
+        16.4,
+        739.76,
+        155.24
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3242243528366089,
+      "box_xyxy_pixels": [
+        672.8,
+        56.57,
+        797.86,
+        160.83
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3790603578090668,
+      "box_xyxy_pixels": [
+        1099.31,
+        -0.11,
+        1180.34,
+        39.46
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.34567001461982727,
+      "box_xyxy_pixels": [
+        1640.43,
+        4.45,
+        1717.77,
+        82.09
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3215366005897522,
+      "box_xyxy_pixels": [
+        1711.2,
+        10.12,
+        1873.44,
+        113.48
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.38050180673599243,
+      "box_xyxy_pixels": [
+        733.37,
+        2.74,
+        954.48,
+        89.43
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3389071822166443,
+      "box_xyxy_pixels": [
+        562.68,
+        19.41,
+        842.62,
+        151.95
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.32971999049186707,
+      "box_xyxy_pixels": [
+        226.96,
+        98.28,
+        378.62,
+        159.37
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3496055603027344,
+      "box_xyxy_pixels": [
+        459.89,
+        5.36,
+        942.71,
+        149.71
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3551728129386902,
+      "box_xyxy_pixels": [
+        1605.2,
+        1.63,
+        1681.62,
+        67.23
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3623805344104767,
+      "box_xyxy_pixels": [
+        788.35,
+        18.03,
+        882.05,
+        93.9
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.33234912157058716,
+      "box_xyxy_pixels": [
+        172.39,
+        128.33,
+        379.01,
+        314.39
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3274681568145752,
+      "box_xyxy_pixels": [
+        655.15,
+        45.89,
+        743.97,
+        144.57
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3444440960884094,
+      "box_xyxy_pixels": [
+        670.65,
+        17.93,
+        768.27,
+        96.23
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3557499051094055,
+      "box_xyxy_pixels": [
+        1599.4,
+        0.75,
+        1682.38,
+        63.89
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.32850897312164307,
+      "box_xyxy_pixels": [
+        664.77,
+        65.32,
+        782.17,
+        150.95
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.34961578249931335,
+      "box_xyxy_pixels": [
+        628.58,
+        17.2,
+        787.42,
+        142.02
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3605738580226898,
+      "box_xyxy_pixels": [
+        545.99,
+        61.88,
+        627.14,
+        143.55
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3538393974304199,
+      "box_xyxy_pixels": [
+        431.9,
+        18.38,
+        749.19,
+        157.92
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.37652790546417236,
+      "box_xyxy_pixels": [
+        430.3,
+        45.58,
+        557.02,
+        138.75
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3688085079193115,
+      "box_xyxy_pixels": [
+        803.8,
+        7.73,
+        932.5,
+        88.17
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.34718358516693115,
+      "box_xyxy_pixels": [
+        682.27,
+        2.54,
+        941.64,
+        100.57
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.28696268796920776,
+      "box_xyxy_pixels": [
+        435.51,
+        36.16,
+        1769.91,
+        1389.0
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.36826616525650024,
+      "box_xyxy_pixels": [
+        472.04,
+        13.63,
+        749.29,
+        132.66
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3353654742240906,
+      "box_xyxy_pixels": [
+        433.93,
+        12.81,
+        804.22,
+        161.88
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.35136300325393677,
+      "box_xyxy_pixels": [
+        1954.59,
+        32.14,
+        2045.42,
+        108.62
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.36589178442955017,
+      "box_xyxy_pixels": [
+        444.81,
+        30.75,
+        616.81,
+        141.45
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3644385039806366,
+      "box_xyxy_pixels": [
+        1617.49,
+        1.46,
+        1692.72,
+        58.59
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3290926218032837,
+      "box_xyxy_pixels": [
+        634.76,
+        67.76,
+        731.15,
+        148.19
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.31272953748703003,
+      "box_xyxy_pixels": [
+        190.12,
+        116.78,
+        367.2,
+        169.48
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3414936065673828,
+      "box_xyxy_pixels": [
+        167.87,
+        125.67,
+        375.9,
+        324.07
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.33629465103149414,
+      "box_xyxy_pixels": [
+        644.67,
+        29.82,
+        733.12,
+        119.29
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3471364676952362,
+      "box_xyxy_pixels": [
+        1970.54,
+        60.5,
+        2058.77,
+        134.62
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3389952778816223,
+      "box_xyxy_pixels": [
+        1899.23,
+        31.35,
+        1987.5,
+        108.81
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3599851131439209,
+      "box_xyxy_pixels": [
+        602.02,
+        1.03,
+        976.18,
+        124.37
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.370477557182312,
+      "box_xyxy_pixels": [
+        433.02,
+        6.72,
+        931.42,
+        156.16
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33722078800201416,
+      "box_xyxy_pixels": [
+        1026.71,
+        11.85,
+        1146.62,
+        87.84
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.4523218870162964,
+      "box_xyxy_pixels": [
+        607.24,
+        1013.66,
+        1286.31,
+        1394.65
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.33241891860961914,
+      "box_xyxy_pixels": [
+        1023.6,
+        5.21,
+        1159.49,
+        85.89
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.35561665892601013,
+      "box_xyxy_pixels": [
+        442.27,
+        35.12,
+        593.22,
+        149.39
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3108614683151245,
+      "box_xyxy_pixels": [
+        175.79,
+        134.18,
+        367.2,
+        202.05
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.34405362606048584,
+      "box_xyxy_pixels": [
+        682.37,
+        16.02,
+        776.4,
+        98.92
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3506251871585846,
+      "box_xyxy_pixels": [
+        373.58,
+        71.79,
+        462.36,
+        120.36
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.32626619935035706,
+      "box_xyxy_pixels": [
+        1799.28,
+        91.65,
+        2087.96,
+        202.99
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.332162469625473,
+      "box_xyxy_pixels": [
+        665.83,
+        20.7,
+        821.24,
+        151.76
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.33771005272865295,
+      "box_xyxy_pixels": [
+        1994.58,
+        112.5,
+        2109.39,
+        197.99
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.38255229592323303,
+      "box_xyxy_pixels": [
+        686.64,
+        0.21,
+        954.81,
+        79.45
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.37086617946624756,
+      "box_xyxy_pixels": [
+        467.36,
+        36.54,
+        631.65,
+        146.32
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3447282910346985,
+      "box_xyxy_pixels": [
+        1501.33,
+        1114.05,
+        1706.58,
+        1280.79
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.34848105907440186,
+      "box_xyxy_pixels": [
+        1966.15,
+        106.53,
+        2045.6,
+        173.41
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3820130527019501,
+      "box_xyxy_pixels": [
+        687.78,
+        0.07,
+        986.63,
+        94.6
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.3293163776397705,
+      "box_xyxy_pixels": [
+        114.25,
+        859.32,
+        1777.99,
+        1384.04
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.34961360692977905,
+      "box_xyxy_pixels": [
+        762.71,
+        51.37,
+        853.55,
+        135.47
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.38048046827316284,
+      "box_xyxy_pixels": [
+        698.05,
+        0.81,
+        964.67,
+        101.39
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3383076786994934,
+      "box_xyxy_pixels": [
+        1614.78,
+        0.85,
+        1714.7,
+        81.87
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.4649968445301056,
+      "box_xyxy_pixels": [
+        587.84,
+        963.4,
+        1305.22,
+        1395.07
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3764380216598511,
+      "box_xyxy_pixels": [
+        863.07,
+        4.16,
+        941.85,
+        65.4
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3613201975822449,
+      "box_xyxy_pixels": [
+        940.09,
+        2.91,
+        994.9,
+        56.53
+      ]
+    },
+    {
+      "class_id": 0,
+      "class": "pipe",
+      "confidence": 0.45161905884742737,
+      "box_xyxy_pixels": [
+        611.76,
+        1001.72,
+        1283.32,
+        1395.44
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3758895695209503,
+      "box_xyxy_pixels": [
+        440.58,
+        36.24,
+        587.01,
+        141.36
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3788734972476959,
+      "box_xyxy_pixels": [
+        935.58,
+        0.08,
+        1000.35,
+        46.0
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3407443165779114,
+      "box_xyxy_pixels": [
+        1014.16,
+        0.01,
+        1145.58,
+        63.58
+      ]
+    },
+    {
+      "class_id": 1,
+      "class": "object",
+      "confidence": 0.3797680139541626,
+      "box_xyxy_pixels": [
+        925.73,
+        0.51,
+        991.4,
+        54.13
+      ]
+    }
+  ],
+  "visualization": "C:\\Users\\Pragathi BR\\OneDrive\\Desktop\\DigSafeAI_Project\\backend\\ml\\test_outputs\\detr-inference-20261023-223907\\test_detr_detections.jpg"
+}

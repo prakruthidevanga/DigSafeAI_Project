@@ -1,0 +1,76 @@
+# ─── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+backend/.venv/
+.venv/
+.venv-1/
+venv/
+env/
+
+# ─── Node / npm ──────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ─── Build output ────────────────────────────────────────────────────────────
+frontend/dist/
+frontend/build/
+backend/dist/
+
+# ─── Environment / secrets ───────────────────────────────────────────────────
+# Never commit real .env files. Use .env.example as the template.
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ─── Local model artifacts ───────────────────────────────────────────────────
+# Trained model files are large and contain synthetic labels not suitable for VCS.
+# Retrain locally using backend/ml/retrain_xgboost.py if needed.
+backend/ml/models/*.joblib
+backend/ml/vision/
+
+# ─── Large dataset files ─────────────────────────────────────────────────────
+# KML and CSV datasets are imported via `node scripts/importDatasets.js`.
+# Do not commit them to git; distribute via a separate data channel.
+Datasets/
+
+# ─── OS / editor noise ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+*.orig
+
+# ─── Test / coverage output ──────────────────────────────────────────────────
+coverage/
+.nyc_output/
+htmlcov/
+.pytest_cache/
+
+# ─── Temporary files ─────────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp

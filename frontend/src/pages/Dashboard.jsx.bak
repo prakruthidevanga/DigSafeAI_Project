@@ -1,0 +1,236 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import API from '../services/api';
+import { getSessionValue } from '../services/session';
+import { MapContainer, TileLayer } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Play, Database, FileText, PlusCircle } from 'lucide-react';
+
+function Dashboard() {
+  const navigate = useNavigate();
+  const [reportStats, setReportStats] = useState({
+    totalReports: 0,
+    highRiskReports: 0,
+    mediumRiskReports: 0,
+    lowRiskReports: 0,
+    recentReports: [],
+  });
+  const [utilityCounts, setUtilityCounts] = useState({ total: 0, water: 0, sewerage: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
+  const userName = getSessionValue('userName') || 'User';
+
+  useEffect(() => {
+    let active = true;
+    const fetchData = async () => {
+      try {
+        const [statsRes, utilityRes] = await Promise.all([
+          API.get('/reports/stats').catch(() => ({ data: null })),
+          API.get('/utilities/summary')
+        ]);
+        if (!active) return;
+        if (statsRes && statsRes.data) {
+          setReportStats({
+            totalReports: statsRes.data.totalReports || 0,
+            highRiskReports: statsRes.data.highRiskReports || 0,
+            mediumRiskReports: statsRes.data.mediumRiskReports || 0,
+            lowRiskReports: statsRes.data.lowRiskReports || 0,
+            recentReports: Array.isArray(statsRes.data.recentReports) ? statsRes.data.recentReports : [],
+          });
+        }
+        const groups = Array.isArray(utilityRes.data.groups) ? utilityRes.data.groups : [];
+        setUtilityCounts(groups.reduce((counts, group) => {
+          counts.total += Number(group.count) || 0;
+          if (group.utilityType === 'water') counts.water += Number(group.count) || 0;
+          if (group.utilityType === 'sewerage') counts.sewerage += Number(group.count) || 0;
+          return counts;
+        }, { total: 0, water: 0, sewerage: 0 }));
+        setError('');
+      } catch (requestError) {
+        if (active) setError(requestError.response?.data?.message || 'Unable to load dashboard data. Please try again.');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => { active = false; };
+  }, [retryCount]);
+
+  const seedData = async () => {
+    try {
+      await API.post('/utilities/seed');
+      alert('Sample/Demo utility records loaded successfully. Refreshing...');
+      window.location.reload();
+    } catch {
+      alert('Error seeding data');
+    }
+  };
+
+  if (loading) {
+    return <div className="page-state">Loading dashboard data...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="page-state error-message" role="alert">
+        <p>{error}</p>
+        <button
+          className="btn-secondary"
+          onClick={() => {
+            setLoading(true);
+            setError('');
+            setRetryCount((current) => current + 1);
+          }}
+        >
+          RETRY
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex-between mb-4" style={{ flexWrap: 'wrap', gap: '15px' }}>
+        <div>
+          <h2 style={{ fontSize: '1.6rem', color: 'var(--primary-dark)', marginBottom: '4px' }}>
+            Welcome back, {userName}
+          </h2>
+          <p className="text-muted" style={{ fontSize: '0.9rem' }}>
+            Bengaluru Underground Infrastructure Safety & AI Risk Assessment Platform
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => navigate('/map-analysis')} className="btn-primary" style={{ marginTop: 0, width: 'auto', padding: '0.6rem 1.2rem' }}>
+            <PlusCircle size={18} /> New Excavation Analysis
+          </button>
+          <button onClick={seedData} className="btn-secondary" style={{ marginTop: 0, fontSize: '0.85rem', padding: '0.6rem 1rem' }}>
+            Verify Sample Utilities
+          </button>
+        </div>
+      </div>
+
+      {utilityCounts.total === 0 && (
+        <div className="workflow-message" role="status">No utility records available.</div>
+      )}
+      
+      <div className="dashboard-grid" style={{ marginBottom: '24px' }}>
+        <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
+          <div className="stat-title">Total Mapped Utilities</div>
+          <div className="flex-between">
+            <div className="stat-value">{utilityCounts.total.toLocaleString()}</div>
+            <div className="badge badge-LOW">OpenCity / BWSSB</div>
+          </div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Active spatial records</span>
+        </div>
+        <div className="stat-card">
+          <div className="stat-title">Water Network Lines</div>
+          <div className="flex-between">
+            <div className="stat-value">{utilityCounts.water.toLocaleString()}</div>
+            <div className="text-muted" style={{ fontSize: '0.75rem' }}>BWSSB Water</div>
+          </div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Water distribution corridors</span>
+        </div>
+        <div className="stat-card">
+          <div className="stat-title">Sewerage Network Lines</div>
+          <div className="flex-between">
+            <div className="stat-value">{utilityCounts.sewerage.toLocaleString()}</div>
+            <div className="text-muted" style={{ fontSize: '0.75rem' }}>BWSSB Sewer</div>
+          </div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Underground gravity mains</span>
+        </div>
+        <div className="stat-card">
+          <div className="stat-title">Completed Assessments</div>
+          <div className="flex-between">
+            <div className="stat-value">{reportStats.totalReports}</div>
+            <div className="badge" style={{ background: '#e2e8f0', color: '#334155' }}>MongoDB</div>
+          </div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Full ML assessments</span>
+        </div>
+        <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
+          <div className="stat-title">Critical High Risk Zones</div>
+          <div className="flex-between">
+            <div className="stat-value" style={{ color: 'var(--danger)' }}>{reportStats.highRiskReports}</div>
+            <div className="badge badge-HIGH">Hazard Flag</div>
+          </div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Potholing required</span>
+        </div>
+      </div>
+
+      <div className="dashboard-main-grid">
+        {/* Left Column: Interactive Map Preview */}
+        <div className="panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', margin: 0 }}>Namma Bengaluru Spatial Grid</h3>
+            <span className="badge badge-LOW">GIS Ready</span>
+          </div>
+          <div style={{ height: '340px', width: '100%' }}>
+            <MapContainer center={[12.9716, 77.5946]} zoom={12} style={{ height: '100%', width: '100%' }} zoomControl={true}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+            </MapContainer>
+          </div>
+        </div>
+
+        {/* Right Column: Quick Actions & Recent Reports */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="panel" style={{ margin: 0 }}>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', marginBottom: '1.2rem' }}>Quick Actions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button className="btn-primary" onClick={() => navigate('/map-analysis')} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                <PlusCircle size={18} /> Launch Map & Analysis
+              </button>
+              <button className="btn-secondary" onClick={() => navigate('/risk-assessment')} style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Play size={18} /> Execute Risk Assessment
+              </button>
+              <button className="btn-secondary" onClick={() => navigate('/reports')} style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={18} /> Review Assessment Logs
+              </button>
+              <button className="btn-secondary" onClick={() => navigate('/data-sources')} style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Database size={18} /> Inspect Utility Datasets
+              </button>
+            </div>
+          </div>
+
+          {/* Recent Analysis Summary Card */}
+          <div className="panel" style={{ margin: 0 }}>
+            <h3 style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', marginBottom: '1rem' }}>Recent Assessments</h3>
+            {reportStats.recentReports.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {reportStats.recentReports.slice(0, 3).map((r) => (
+                  <div
+                    key={r._id}
+                    onClick={() => navigate(`/risk-result/${r._id}`)}
+                    style={{
+                      padding: '8px 12px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: '0.85rem' }}>{r.location}</strong>
+                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                        Depth: {r.depth}m · {new Date(r.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <span className={`badge badge-${r.riskLevel}`}>{r.riskLevel}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+                No assessments performed yet. Click Start New Analysis to begin.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Dashboard;

@@ -1,0 +1,1134 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import API from '../services/api';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents, useMap } from 'react-leaflet';
+import { Search } from 'lucide-react';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+function parseInputNumber(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+// Fix leaflet marker icon issue in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+/**
+ * Derives user-facing risk presentation details (explanation, factors, recommendations)
+ * based strictly on verified inputs and the backend consensus risk class.
+ */
+function getUnifiedRiskDetails(consensusClass, { depth, radius, utilities, sensors }) {
+  const normClass = typeof consensusClass === 'string' ? consensusClass.toUpperCase() : 'UNKNOWN';
+  const numDepth = parseInputNumber(depth) ?? 0;
+  const numRadius = parseInputNumber(radius) ?? 0;
+  const safeUtilities = Array.isArray(utilities) ? utilities : [];
+  const utilityCount = safeUtilities.length;
+  
+  // Calculate nearest utility distance from actual matched records
+  const distances = safeUtilities
+    .map(u => (Number.isFinite(u.distance) ? u.distance : null))
+    .filter(d => d !== null);
+  const minDistance = distances.length > 0 ? Math.min(...distances) : null;
+  const utilityTypes = [...new Set(safeUtilities.map(u => u.utilityType).filter(Boolean))];
+
+  // 1. Clear explanation of why the location received this category
+  let explanation = '';
+  if (normClass === 'HIGH') {
+    if (minDistance !== null && minDistance <= 5) {
+      explanation = `High risk assessed: Underground utility infrastructure (${utilityTypes.join(', ') || 'records'}) is directly adjacent or intersecting within ${minDistance.toFixed(1)}m of the proposed excavation footprint at depth ${numDepth}m.`;
+    } else {
+      explanation = `High risk assessed: Multi-feature risk evaluation indicates critical conflict probability between the planned excavation depth (${numDepth}m) and underground utility network corridors in this area.`;
+    }
+  } else if (normClass === 'MEDIUM') {
+    explanation = `Medium risk assessed: Underground utility infrastructure is present within the ${numRadius}m search zone (nearest mapped line: ${minDistance !== null ? `${minDistance.toFixed(1)}m` : 'within zone'}). Caution is advised during ground disturbance.`;
+  } else if (normClass === 'LOW') {
+    explanation = `Low risk assessed: Based on confirmed mapped dataset records and site parameters, no immediate high-probability utility conflict was indicated for this depth (${numDepth}m). Subsurface vigilance remains necessary.`;
+  } else {
+    explanation = 'Excavation risk evaluation complete. Review site factors and maintain standard utility protection protocols.';
+  }
+
+  // 2. Verified contributing factors based strictly on actual available data
+  const contributingFactors = [];
+  if (minDistance !== null) {
+    contributingFactors.push(`Proximity: Closest confirmed utility line is ${minDistance.toFixed(1)} meters from the excavation point.`);
+  }
+  if (utilityCount > 0) {
+    contributingFactors.push(`Utility Density: ${utilityCount} mapped asset segment${utilityCount > 1 ? 's' : ''} detected (${utilityTypes.join(', ') || 'utility lines'}).`);
+  }
+  if (numDepth > 0) {
+    contributingFactors.push(`Excavation Depth: Planned excavation depth is ${numDepth} meters.`);
+  }
+  if (sensors && typeof sensors === 'object') {
+    if (Number.isFinite(sensors.vibration)) {
+      contributingFactors.push(`Sensor Vibration: Surface vibration level recorded at ${sensors.vibration} (software simulated).`);
+    }
+    if (Number.isFinite(sensors.soilCondition)) {
+      contributingFactors.push(`Soil Condition: Soil condition index recorded at ${sensors.soilCondition} (software simulated).`);
+    }
+  }
+
+  // 3. Relevant excavation safety recommendations appropriate to category
+  const recommendations = [];
+  if (normClass === 'HIGH') {
+    recommendations.push('Decision Support: High risk flag indicates that mechanical excavation without physical verification poses significant risk of utility strike.');
+    recommendations.push('Precautionary Protocol: Conduct non-destructive physical exposure (hand digging or potholing) to verify exact pipe depth and alignment before deploying heavy machinery.');
+    recommendations.push('Agency Coordination: Verify alignments with local utility authorities (e.g., BWSSB / BESCOM) prior to commencing excavation.');
+  } else if (normClass === 'MEDIUM') {
+    recommendations.push('Decision Support: Exercise controlled excavation procedures when operating within the designated search radius.');
+    recommendations.push('Precautionary Protocol: Mark verified utility corridors on ground surface and monitor trench walls continuously for unmapped conduits.');
+    recommendations.push('Agency Coordination: Have utility emergency contact numbers on-site before breaking ground.');
+  } else {
+    recommendations.push('Decision Support: Maintain standard excavation vigilance; dataset completeness is not guaranteed to represent all buried assets.');
+    recommendations.push('Precautionary Protocol: Stop work immediately if unexpected tiles, marker tape, pea gravel bedding, or pipe encasements are encountered.');
+  }
+
+  return {
+    categoryLabel: normClass === 'HIGH' ? 'HIGH RISK' : normClass === 'MEDIUM' ? 'MEDIUM RISK' : normClass === 'LOW' ? 'LOW RISK' : `${normClass} RISK`,
+    riskClass: normClass.toLowerCase(),
+    explanation,
+    contributingFactors,
+    recommendations,
+    nearestDistance: minDistance,
+    utilityCount,
+    utilityTypes,
+  };
+}
+
+
+function MapCenterController({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center && Number.isFinite(center[0]) && Number.isFinite(center[1])) {
+      map.flyTo(center, zoom || map.getZoom(), { duration: 1.2 });
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
+function LocationMarker({ position, setPosition, setLocationName }) {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+      if (setLocationName) {
+        setLocationName(`Custom (${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)})`);
+      }
+    },
+  });
+
+  return position === null ? null : (
+    <Marker position={position}>
+      <Popup>
+        <strong>Excavation Point</strong>
+        <div>{position.lat.toFixed(5)}, {position.lng.toFixed(5)}</div>
+      </Popup>
+    </Marker>
+  );
+}
+
+const BENGALURU_PRESETS = [
+  { name: 'Cubbon Park / City Central', lat: 12.9765, lng: 77.5742, depth: 2.5, radius: 250 },
+  { name: 'Koramangala 5th Block', lat: 12.9352, lng: 77.6245, depth: 2.0, radius: 300 },
+  { name: 'Indiranagar 100ft Road', lat: 12.9784, lng: 77.6408, depth: 3.0, radius: 200 },
+  { name: 'Whitefield Kadugodi', lat: 12.9957, lng: 77.7579, depth: 2.5, radius: 400 },
+  { name: 'Hebbal Flyover Junction', lat: 13.0358, lng: 77.5970, depth: 3.5, radius: 350 },
+  { name: 'Jayanagar 4th Block', lat: 12.9298, lng: 77.5839, depth: 2.0, radius: 250 },
+  { name: 'MG Road Metro Station', lat: 12.9756, lng: 77.6097, depth: 2.8, radius: 300 },
+];
+
+function MapAnalysis({ initialStep = 1 }) {
+  const navigate = useNavigate();
+  const [step, setStep] = useState(initialStep);
+  const [mapCenter, setMapCenter] = useState([12.9765, 77.5742]);
+  const [mapZoom, setMapZoom] = useState(14);
+  const [position, setPosition] = useState({ lat: 12.9765, lng: 77.5742 }); // Default active location
+  const [locationName, setLocationName] = useState('Cubbon Park / City Central');
+  const [depth, setDepth] = useState(2.5);
+  const [radius, setRadius] = useState(250);
+
+  // Search & Geocoding
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [manualLat, setManualLat] = useState('12.9765');
+  const [manualLng, setManualLng] = useState('77.5742');
+  
+  // Image
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageError, setImageError] = useState('');
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageInference, setImageInference] = useState(null);
+  const [modelStatus, setModelStatus] = useState(null);
+  const [modelStatusError, setModelStatusError] = useState('');
+  
+  // Sensor
+  const [sensors, setSensors] = useState(null);
+  const [sensorLoading, setSensorLoading] = useState(false);
+  const [sensorError, setSensorError] = useState('');
+
+  // Analysis
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+  const [analysisInfo, setAnalysisInfo] = useState('');
+  const [riskPrediction, setRiskPrediction] = useState(null);
+
+  // Utilities layer toggles
+  const [layers, setLayers] = useState({
+    bescom: true,
+    water: true,
+    sewerage: true,
+    manhole: true
+  });
+  
+  const [nearbyUtilities, setNearbyUtilities] = useState([]);
+  const [utilitiesLoading, setUtilitiesLoading] = useState(false);
+  const [utilitiesError, setUtilitiesError] = useState('');
+  const [utilityLookupStatus, setUtilityLookupStatus] = useState('');
+  const [utilityLookupMessage, setUtilityLookupMessage] = useState('');
+  const [utilityLookupLimitation, setUtilityLookupLimitation] = useState('');
+  const [utilityResultsTruncated, setUtilityResultsTruncated] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  useEffect(() => {
+    API.get('/models/status')
+      .then((res) => setModelStatus(res.data))
+      .catch(() => setModelStatusError('Model availability could not be checked.'));
+  }, []);
+
+  // Fetch utilities when the selected point or search radius changes.
+  useEffect(() => {
+    const controller = new AbortController();
+    const parsedRadius = parseInputNumber(radius);
+    const validPosition = position
+      && Number.isFinite(position.lat) && position.lat >= -90 && position.lat <= 90
+      && Number.isFinite(position.lng) && position.lng >= -180 && position.lng <= 180;
+
+    const fetchUtilities = async () => {
+      setNearbyUtilities([]);
+      setUtilityLookupStatus('');
+      setUtilityLookupMessage('');
+      setUtilityLookupLimitation('');
+      setUtilityResultsTruncated(false);
+      setUtilitiesError('');
+
+      if (!position) return;
+      if (!validPosition) {
+        setUtilitiesError('Selected map coordinates are invalid. Choose a valid point on the map.');
+        setUtilitiesLoading(false);
+        return;
+      }
+      if (parsedRadius === null || parsedRadius <= 0 || parsedRadius > 50000) {
+        setUtilitiesError('Enter a search radius greater than 0 and no more than 50000 meters.');
+        setUtilitiesLoading(false);
+        return;
+      }
+
+      setUtilitiesLoading(true);
+      try {
+        const res = await API.get('/utilities/proximity', {
+          params: { lat: position.lat, lng: position.lng, radius: parsedRadius },
+          signal: controller.signal,
+        });
+        setNearbyUtilities(Array.isArray(res.data.utilities) ? res.data.utilities : []);
+        setUtilityLookupStatus(res.data.status || 'LOOKUP_UNAVAILABLE');
+        setUtilityLookupMessage(res.data.message || 'Utility lookup returned no status message.');
+        setUtilityLookupLimitation(res.data.limitation || '');
+        setUtilityResultsTruncated(Boolean(res.data.truncated));
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error('Error fetching utilities', error);
+        setUtilitiesError(
+          error.response?.data?.message || 'Utility information could not be loaded for this location.',
+        );
+      } finally {
+        if (!controller.signal.aborted) setUtilitiesLoading(false);
+      }
+    };
+
+    fetchUtilities();
+    return () => controller.abort();
+  }, [position, radius]);
+
+  // Synchronize manual coordinate inputs when position updates
+  useEffect(() => {
+    if (position && Number.isFinite(position.lat) && Number.isFinite(position.lng)) {
+      setManualLat(position.lat.toFixed(5));
+      setManualLng(position.lng.toFixed(5));
+    }
+  }, [position]);
+
+  const handleSearchLocation = async (e) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearchLoading(true);
+    setSearchError('');
+    setSearchResults([]);
+    try {
+      const q = encodeURIComponent(`${searchQuery.trim()}, Bengaluru, Karnataka, India`);
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`, {
+        headers: { 'Accept-Language': 'en' }
+      });
+      const data = await resp.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setSearchResults(data);
+      } else {
+        setSearchError('No matching locations found in Bengaluru. Try another landmark or area name.');
+      }
+    } catch (err) {
+      setSearchError('Geocoding service unavailable. You can click on the map or enter coordinates directly.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSelectSearchResult = (result) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      const newPos = { lat, lng };
+      setPosition(newPos);
+      setMapCenter([lat, lng]);
+      setMapZoom(15);
+      setLocationName(result.display_name.split(',')[0]);
+      setSearchResults([]);
+      setSearchQuery('');
+    }
+  };
+
+  const handleSelectPreset = (preset) => {
+    setPosition({ lat: preset.lat, lng: preset.lng });
+    setMapCenter([preset.lat, preset.lng]);
+    setMapZoom(15);
+    setLocationName(preset.name);
+    setDepth(preset.depth);
+    setRadius(preset.radius);
+    setSearchResults([]);
+  };
+
+  const handleApplyManualCoords = (e) => {
+    if (e) e.preventDefault();
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+      setAnalysisError('Latitude must be a valid number between -90 and 90.');
+      return;
+    }
+    if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+      setAnalysisError('Longitude must be a valid number between -180 and 180.');
+      return;
+    }
+    setAnalysisError('');
+    setPosition({ lat, lng });
+    setMapCenter([lat, lng]);
+    setMapZoom(15);
+    setLocationName(`Coordinates (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    setImageError('');
+    setImageInference(null);
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setImageError('Choose a JPEG, PNG, or WebP image.');
+      setImagePreview(null);
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('Image must be 5 MB or smaller.');
+      setImagePreview(null);
+      e.target.value = '';
+      return;
+    }
+    setImagePreview(URL.createObjectURL(file));
+    setImageLoading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const response = await API.post('/models/image-inference', formData);
+      setImageInference(response.data);
+    } catch (error) {
+      setImageInference(error.response?.data || {
+        status: 'INFERENCE_UNAVAILABLE',
+        detections: null,
+        message: 'Image inference is currently unavailable.',
+      });
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const handleGenerateSensor = async () => {
+    setSensorLoading(true);
+    setSensorError('');
+    try {
+      const res = await API.post('/simulation/simulate');
+      setSensors(res.data.data);
+    } catch (error) {
+      console.error("Error generating sensors", error);
+      setSensorError('Sensor simulation failed. Please try again.');
+    } finally {
+      setSensorLoading(false);
+    }
+  };
+
+  const validateInputs = () => {
+    if (!position) return 'Select an excavation location on the map.';
+    if (
+      !Number.isFinite(position.lat) || position.lat < -90 || position.lat > 90
+      || !Number.isFinite(position.lng) || position.lng < -180 || position.lng > 180
+    ) {
+      return 'Selected map coordinates are invalid. Choose a valid point on the map.';
+    }
+    if (typeof locationName !== 'string' || locationName.trim().length < 2) {
+      return 'Enter a location name with at least 2 characters.';
+    }
+
+    const parsedDepth = parseInputNumber(depth);
+    const parsedRadius = parseInputNumber(radius);
+    if (parsedDepth === null || parsedDepth <= 0) {
+      return 'Enter an excavation depth that is a valid number greater than 0 meters.';
+    }
+    if (parsedRadius === null || parsedRadius <= 0 || parsedRadius > 50000) {
+      return 'Enter an excavation radius greater than 0 and no more than 50000 meters.';
+    }
+
+    return '';
+  };
+
+  const continueToUtilities = () => {
+    const validationError = validateInputs();
+    if (validationError) {
+      setAnalysisError(validationError);
+      return;
+    }
+
+    setAnalysisError('');
+    setStep(2);
+  };
+
+  const runRiskAnalysis = async () => {
+    const validationError = validateInputs();
+    if (validationError) {
+      setAnalysisError(validationError);
+      return;
+    }
+    setAnalyzing(true);
+    setAnalysisError('');
+    setAnalysisInfo('');
+    setRiskPrediction(null);
+    try {
+      const payload = {
+        location: locationName.trim(),
+        latitude: position.lat,
+        longitude: position.lng,
+        depth: parseInputNumber(depth),
+        radius: parseInputNumber(radius),
+        utilities: nearbyUtilities,
+        utilityDataStatus: utilityLookupStatus,
+        sensors: sensors,
+        imageInspection: imageInference || null,
+      };
+      
+      const res = await API.post('/risk/analyze', payload);
+      const returnedReportId = res.data?.reportId || res.data?._id || res.data?.report?._id;
+      if (returnedReportId) {
+        navigate(`/risk-result/${returnedReportId}`);
+        return;
+      } else if (res.data?.status === 'PREDICTION_AVAILABLE' && res.data.riskPrediction) {
+        setRiskPrediction(res.data.riskPrediction);
+        setAnalysisInfo('Live ML multi-model analysis returned successfully.');
+      } else {
+        setAnalysisInfo(res.data?.message || 'Analysis complete.');
+      }
+    } catch (error) {
+      console.error("Error analyzing risk", error);
+      const status = error.response?.data?.status;
+      const message = error.response?.data?.message;
+      if (status === 'MODEL_NOT_CONFIGURED' || status === 'INFERENCE_UNAVAILABLE') {
+        setAnalysisError(message || 'Excavation-risk prediction is unavailable. No compatible trained model is configured.');
+      } else {
+        setAnalysisError(message || 'Analysis failed. Please try again.');
+      }
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2>Map & Analysis</h2>
+      <div className="panel" role="status">
+        <h3>Model availability</h3>
+        {modelStatusError && <p className="text-muted">{modelStatusError}</p>}
+        {modelStatus ? (
+          <ul>
+            <li>
+              Excavation-risk models: {modelStatus.excavationRisk.status};
+              inference {modelStatus.excavationRisk.inferenceReady ? 'ready' : 'unavailable'}.
+            </li>
+            {Object.entries(modelStatus.imageDetection).map(([name, model]) => (
+              <li key={name}>Image detection ({name}): {model.status}; inference {model.inferenceReady ? 'ready' : 'unavailable'}.</li>
+            ))}
+            <li>Utility classification: {modelStatus.utilityClassification.status}; prediction task is not verified.</li>
+          </ul>
+        ) : !modelStatusError ? <p className="text-muted">Checking configured models...</p> : null}
+        {modelStatus?.excavationRisk.limitation && (
+          <p className="text-muted">{modelStatus.excavationRisk.limitation}</p>
+        )}
+      </div>
+      
+      {/* Stepper */}
+      <div className="workflow-stepper" style={{display: 'flex', gap: '10px', marginBottom: '20px'}}>
+        <button className={step === 1 ? "btn-primary" : "btn-secondary"} onClick={() => setStep(1)} style={{marginTop: 0}}>1. Location</button>
+        <button className={step === 2 ? "btn-primary" : "btn-secondary"} onClick={() => setStep(2)} style={{marginTop: 0}} disabled={!position}>2. Utilities</button>
+        <button className={step === 3 ? "btn-primary" : "btn-secondary"} onClick={() => setStep(3)} style={{marginTop: 0}} disabled={!position}>3. Sensors</button>
+        <button className={step === 4 ? "btn-primary" : "btn-secondary"} onClick={() => setStep(4)} style={{marginTop: 0}} disabled={!position || !sensors}>4. Analyze</button>
+      </div>
+
+      {analysisError && (
+        <div className="workflow-message error-message" role="alert">{analysisError}</div>
+      )}
+
+      {analysisInfo && (
+        <div className="workflow-message" role="status">{analysisInfo}</div>
+      )}
+
+      {riskPrediction && (() => {
+        const consensus = riskPrediction.safetyAssessment?.consensusClass || 'UNKNOWN';
+        const details = getUnifiedRiskDetails(consensus, {
+          depth,
+          radius,
+          utilities: nearbyUtilities,
+          sensors,
+        });
+
+        return (
+          <div className="unified-risk-card" role="status" aria-label="Excavation Risk Assessment Result">
+            <div className={`unified-risk-header risk-${details.riskClass}`}>
+              <div className="unified-risk-title-group">
+                <h3>Excavation Risk Assessment</h3>
+                <p>Location: {locationName} · Depth: {depth}m · Radius: {radius}m</p>
+              </div>
+              <div className={`unified-risk-badge risk-${details.riskClass}`}>
+                {details.categoryLabel}
+              </div>
+            </div>
+
+            <div className="unified-risk-body">
+              <div className="unified-risk-explanation">
+                <strong>Assessment Summary:</strong> {details.explanation}
+              </div>
+
+              <div className="unified-risk-grid">
+                <div className="unified-risk-section">
+                  <h4>Contributing Site Factors</h4>
+                  {details.contributingFactors.length > 0 ? (
+                    <ul className="unified-risk-list">
+                      {details.contributingFactors.map((factor, idx) => (
+                        <li key={`factor-${idx}`}>{factor}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                      Standard baseline parameters evaluated.
+                    </p>
+                  )}
+                </div>
+
+                <div className="unified-risk-section">
+                  <h4>Safety Recommendations</h4>
+                  <ul className="unified-risk-list unified-risk-rec-list">
+                    {details.recommendations.map((rec, idx) => (
+                      <li key={`rec-${idx}`}>{rec}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Multi-Model Consensus Breakdown (RF, XGBoost, LightGBM) */}
+              {riskPrediction.models && (
+                <div className="unified-risk-section" style={{ background: '#ffffff' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h4 style={{ margin: 0 }}>Multi-Model Machine Learning Consensus</h4>
+                    <span className="badge" style={{ background: riskPrediction.agreement ? '#dcfce7' : '#fef3c7', color: riskPrediction.agreement ? '#166534' : '#92400e', fontWeight: 600 }}>
+                      {riskPrediction.agreement ? 'Full Model Agreement' : 'Majority Consensus'}
+                    </span>
+                  </div>
+                  <table className="model-consensus-table">
+                    <thead>
+                      <tr>
+                        <th>Model Name</th>
+                        <th>Predicted Class</th>
+                        <th>Highest Class Probability</th>
+                        <th>Class Distribution</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {['random_forest', 'xgboost', 'lightgbm'].map((mName) => {
+                        const mData = riskPrediction.models[mName];
+                        if (!mData) {
+                          return (
+                            <tr key={mName}>
+                              <td><strong>{mName.replace('_', ' ').toUpperCase()}</strong></td>
+                              <td colSpan="3" style={{ color: '#94a3b8' }}>Model inference unavailable</td>
+                            </tr>
+                          );
+                        }
+                        const probs = Array.isArray(mData.classProbabilities) ? mData.classProbabilities : [];
+                        const topProb = probs.find(p => p.label.toLowerCase() === mData.predictedClass.toLowerCase())?.probability;
+                        return (
+                          <tr key={mName}>
+                            <td><strong>{mName === 'random_forest' ? 'Random Forest' : mName === 'xgboost' ? 'XGBoost' : 'LightGBM'}</strong></td>
+                            <td>
+                              <span className={`badge badge-${mData.predictedClass.toUpperCase()}`}>
+                                {mData.predictedClass}
+                              </span>
+                            </td>
+                            <td>{Number.isFinite(topProb) ? `${(topProb * 100).toFixed(1)}%` : 'N/A'}</td>
+                            <td style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {probs.map(p => `${p.label}: ${(p.probability * 100).toFixed(0)}%`).join(' · ')}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {details.utilityCount > 0 && (
+                <div style={{ fontSize: '0.85rem', color: '#475569', background: '#f1f5f9', padding: '10px 14px', borderRadius: '6px' }}>
+                  <strong>Underground Utility Context:</strong> {details.utilityCount} mapped asset segment{details.utilityCount > 1 ? 's' : ''} identified in the area ({details.utilityTypes.join(', ') || 'records'}). See the Utilities tab for full spatial alignment and pipe attributes.
+                </div>
+              )}
+
+              <div className="unified-risk-disclaimer">
+                <strong>Important Decision-Support Notice:</strong> {riskPrediction.limitation || 'This evaluation is an AI-assisted decision-support tool based on available municipal GIS datasets and software simulation. It does not replace field utility locates or constitute authorization to excavate.'}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {step === 1 && (
+        <div className="panel">
+          <h3>Select Excavation Location</h3>
+          {/* Search bar and Presets */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-dark)', marginBottom: '6px', display: 'block' }}>
+              Search Bengaluru Area, Landmark or Address
+            </label>
+            <form onSubmit={handleSearchLocation} className="map-search-bar">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Type location (e.g. Indiranagar, MG Road, Whitefield...)"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button type="submit" className="btn-primary" disabled={searchLoading} style={{ marginTop: 0, padding: '0.5rem 1rem' }}>
+                {searchLoading ? 'Searching...' : 'Search'}
+              </button>
+              {searchResults.length > 0 && (
+                <div className="search-results-dropdown">
+                  {searchResults.map((res, idx) => (
+                    <div
+                      key={`sr-${idx}`}
+                      className="search-result-item"
+                      onClick={() => handleSelectSearchResult(res)}
+                    >
+                      <strong>{res.display_name.split(',')[0]}</strong>
+                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>{res.display_name}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </form>
+            {searchError && <div className="text-muted" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{searchError}</div>}
+          </div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginRight: '8px' }}>Verified Bengaluru Demonstration Locations:</span>
+            <div className="preset-chip-list">
+              {BENGALURU_PRESETS.map((preset, idx) => (
+                <button
+                  key={`preset-${idx}`}
+                  type="button"
+                  className={`preset-chip ${locationName === preset.name ? 'active' : ''}`}
+                  onClick={() => handleSelectPreset(preset)}
+                >
+                  📍 {preset.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-group-row" style={{display: 'flex', gap: '15px', marginBottom: '15px', flexWrap: 'wrap'}}>
+            <div className="form-group" style={{flex: 2, minWidth: '200px'}}>
+              <label>Location Name</label>
+              <input type="text" className="form-control" value={locationName} onChange={e => setLocationName(e.target.value)} />
+            </div>
+            <div className="form-group" style={{flex: 1, minWidth: '120px'}}>
+              <label>Excavation Depth (m)</label>
+              <input type="number" min="0.01" step="any" className="form-control" value={depth} onChange={e => setDepth(e.target.value)} />
+            </div>
+            <div className="form-group" style={{flex: 1, minWidth: '120px'}}>
+              <label>Search Radius (m)</label>
+              <input type="number" min="0.01" max="50000" step="any" className="form-control" value={radius} onChange={e => setRadius(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Manual Coordinate Entry Accordion */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+            <form onSubmit={handleApplyManualCoords} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Manual Lat/Lng:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Lat:</span>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ width: '110px', padding: '4px 8px', fontSize: '0.85rem' }}
+                  value={manualLat}
+                  onChange={e => setManualLat(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Lng:</span>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ width: '110px', padding: '4px 8px', fontSize: '0.85rem' }}
+                  value={manualLng}
+                  onChange={e => setManualLng(e.target.value)}
+                />
+              </div>
+              <button type="submit" className="btn-secondary" style={{ marginTop: 0, padding: '4px 12px', fontSize: '0.8rem' }}>
+                Go to Coords
+              </button>
+            </form>
+          </div>
+
+          <div className="map-container" style={{ position: 'relative' }}>
+            <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
+              <MapCenterController center={mapCenter} zoom={mapZoom} />
+              <LocationMarker position={position} setPosition={setPosition} setLocationName={setLocationName} />
+              
+              {nearbyUtilities.flatMap((u, i) => {
+                let show = false;
+                let color = 'blue';
+                if (u.utilityType === 'electrical' && layers.bescom) { show = true; color = 'red'; }
+                if (u.utilityType === 'water' && layers.water) { show = true; color = 'blue'; }
+                if (u.utilityType === 'sewerage' && layers.sewerage) { show = true; color = 'brown'; }
+                if (u.utilityType === 'manhole' && layers.manhole) { show = true; color = 'gray'; }
+
+                if (!show) return [];
+
+                if (u.geometry?.type === 'LineString' || u.geometry?.type === 'MultiLineString') {
+                  const lines = u.geometry.type === 'LineString'
+                    ? [u.geometry.coordinates]
+                    : u.geometry.coordinates;
+                  return lines.map((line, lineIndex) => (
+                    <Polyline
+                      key={`${u._id || i}-line-${lineIndex}`}
+                      positions={line.map(([longitude, latitude]) => [latitude, longitude])}
+                      pathOptions={{ color, weight: 3 }}
+                    >
+                      <Popup>{u.source} {u.utilityType} ({u.distance}m away)</Popup>
+                    </Polyline>
+                  ));
+                }
+                const coordinates = u.geometry?.type === 'Point'
+                  ? [u.geometry.coordinates[1], u.geometry.coordinates[0]]
+                  : [u.latitude, u.longitude];
+                if (!coordinates.every(Number.isFinite)) return [];
+                return [(
+                  <Circle key={u._id || i} center={coordinates} radius={5} pathOptions={{ color, fillColor: color, fillOpacity: 1 }}>
+                    <Popup>{u.source} - {u.description || u.name || u.utilityType} ({u.distance}m away)</Popup>
+                  </Circle>
+                )];
+              })}
+
+              {position && <Circle center={position} radius={parseInputNumber(radius) || 0} pathOptions={{ color: 'orange', fillOpacity: 0.2 }} />}
+            </MapContainer>
+          </div>
+
+          <div aria-label="Map legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '12px', fontSize: '0.85rem' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><i aria-hidden="true" style={{ width: '20px', borderTop: '3px solid #168de2' }} /> Water</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}><i aria-hidden="true" style={{ width: '20px', borderTop: '3px solid #8b5a2b' }} /> Sewerage</span>
+            <span><strong style={{ color: '#b42318' }}>●</strong> Electrical points</span>
+            <span>Electrical substations: data source only (CSV has no coordinates)</span>
+          </div>
+
+          {position && (
+            <div className="selection-summary">
+              <strong>Selected location</strong>
+              <span>Latitude: {position.lat.toFixed(6)}</span>
+              <span>Longitude: {position.lng.toFixed(6)}</span>
+            </div>
+          )}
+          
+          <button className="btn-primary" onClick={continueToUtilities} disabled={!position}>CONTINUE TO UTILITIES</button>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="panel">
+          <h3>Utility Information</h3>
+          <p className="text-muted" style={{marginBottom: '15px'}}>
+              Mapped BWSSB pipeline records from the project KML datasets are searched within the selected radius. KML coordinates are geographic longitude/latitude and distances are calculated in meters. Dataset coverage may be incomplete, and no match does not confirm that no underground utility exists. Pipe depth is not available in these records.
+          </p>
+
+          <div className="utility-category-grid">
+            {[
+              ['water', 'water', 'BWSSB Water Lines'],
+              ['sewerage', 'sewerage', 'BWSSB Sewer Lines']
+            ].map(([layer, utilityType, label]) => {
+              const records = nearbyUtilities.filter(utility => utility.utilityType === utilityType);
+              return (
+                <div className="utility-category" key={utilityType}>
+                  <label>
+                    <input type="checkbox" checked={layers[layer]} onChange={e => setLayers({ ...layers, [layer]: e.target.checked })} /> {label}
+                  </label>
+                  {records.length > 0 ? (
+                    <div className="utility-records">
+                      {records.map((utility, index) => (
+                        <div key={`${utility._id || utilityType}-${index}`} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <strong>{utility.name || utility.source || utility.utilityType}</strong>
+                              <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1', fontSize: '0.75rem' }}>{utility.distance}m away</span>
+                            </div>
+                            <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+                              {utility.datasetName || utility.dataSource || utility.source}
+                              {utility.sourceFile ? ` · ${utility.sourceFile}` : ''}
+                            </div>
+                            
+                            {/* Diameter Information - Recorded vs AI Estimated */}
+                            <div style={{ marginTop: '6px', fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {utility.diameterEstimationType === 'RECORDED_ONLY' && (
+                                <span style={{ color: '#047857', fontWeight: 600 }}>
+                                  📏 Recorded Diameter: {utility.recordedDiameter} mm
+                                </span>
+                              )}
+                              {utility.diameterEstimationType === 'AI_ESTIMATED' && (
+                                <span style={{ color: '#0284c7', background: '#f0f9ff', padding: '2px 6px', borderRadius: '4px' }}>
+                                  🤖 AI Estimated Diameter: <strong>{utility.estimatedDiameter} mm</strong> ({utility.diameterModel || 'XGBoost ML'})
+                                </span>
+                              )}
+                              {utility.depthMeters && (
+                                <span style={{ color: '#64748b' }}>
+                                  ⚓ Recorded Depth: {utility.depthMeters} m
+                                </span>
+                              )}
+                            </div>
+
+                            {Object.entries(utility.attributes || {}).length > 0 && (
+                              <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                                {Object.entries(utility.attributes).slice(0, 3).map(([name, value]) => `${name}: ${value}`).join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted utility-empty">No records found within the selected radius.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {utilitiesLoading && <p className="text-muted" role="status">Searching mapped utility records for this location and radius...</p>}
+          {utilitiesError && <div className="workflow-message error-message" role="alert">{utilitiesError}</div>}
+          {!utilitiesLoading && !utilitiesError && utilityLookupStatus === 'MATCHES_FOUND' && (
+            <div className="workflow-message" role="status">
+              <p><strong>Mapped utility records found: {nearbyUtilities.length}.</strong> Distances below are calculated from the selected point to the mapped geometry.</p>
+              <p>These are dataset records, not field verification. Other underground utilities may be present.</p>
+              {utilityLookupLimitation && <p>{utilityLookupLimitation}</p>}
+            </div>
+          )}
+          {!utilitiesLoading && !utilitiesError && utilityLookupStatus === 'NO_MATCHES_IN_AVAILABLE_DATA' && (
+            <div className="workflow-message" role="status">
+              <p><strong>No matching utility records in the available mapped dataset.</strong> This does not mean the area is clear of underground utilities.</p>
+              {utilityLookupMessage && <p>{utilityLookupMessage}</p>}
+              {utilityLookupLimitation && <p>{utilityLookupLimitation}</p>}
+            </div>
+          )}
+          {!utilitiesLoading && !utilitiesError && utilityLookupStatus === 'DATASET_NOT_IMPORTED' && (
+            <div className="workflow-message" role="status">
+              <p><strong>Mapped utility dataset is not available.</strong> No proximity conclusion can be made for this location.</p>
+              {utilityLookupMessage && <p>{utilityLookupMessage}</p>}
+              {utilityLookupLimitation && <p>{utilityLookupLimitation}</p>}
+            </div>
+          )}
+          {!utilitiesLoading && !utilitiesError && !['MATCHES_FOUND', 'NO_MATCHES_IN_AVAILABLE_DATA', 'DATASET_NOT_IMPORTED'].includes(utilityLookupStatus) && utilityLookupStatus && (
+            <div className="workflow-message" role="status">
+              <p>{utilityLookupMessage}</p>
+              {utilityLookupLimitation && <p>{utilityLookupLimitation}</p>}
+            </div>
+          )}
+          {!utilitiesLoading && !utilitiesError && !utilityLookupStatus && (
+            <div className="workflow-message" role="status">
+              <p>No utility lookup has completed for the current search.</p>
+              <p>Missing records do not prove the ground is free of underground utilities.</p>
+            </div>
+          )}
+          {utilityResultsTruncated && (
+            <p className="text-muted" role="status">The result list is limited to the nearest 500 mapped records; additional matches may exist.</p>
+          )}
+          <h4 style={{marginTop: '24px'}}>Optional Site Image</h4>
+          <p className="text-muted" style={{marginBottom: '15px'}}>
+            Images are checked for utility detections only when a compatible model and inference adapter are available. They are not used for excavation-risk prediction.
+          </p>
+
+          <div className="form-group">
+            <label>Upload Image (JPEG, PNG, WebP; maximum 5 MB)</label>
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageUpload} className="form-control" />
+          </div>
+
+          {imageError && <div className="workflow-message error-message" role="alert">{imageError}</div>}
+
+          {imagePreview && (
+            <div className="detection-visualizer-card">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <strong style={{ fontSize: '0.95rem' }}>Site Inspection Image Preview</strong>
+                <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                  {imageLoading ? 'Running AI detection...' : (imageInference ? `Inference: ${imageInference.status}` : 'Image ready')}
+                </span>
+              </div>
+
+              <div className="detection-image-wrapper">
+                <img src={imagePreview} alt="Excavation site inspection preview" />
+
+                {/* Responsive SVG Bounding Box Overlay */}
+                {imageInference?.imageSize?.width > 0 && imageInference?.imageSize?.height > 0 && Array.isArray(imageInference?.detections) && (
+                  <svg
+                    className="detection-svg-overlay"
+                    viewBox={`0 0 ${imageInference.imageSize.width} ${imageInference.imageSize.height}`}
+                    preserveAspectRatio="xMidYMid meet"
+                    aria-label="Underground utility detection overlay"
+                  >
+                    {imageInference.detections.map((detection, index) => {
+                      const box = detection.boundingBox;
+                      if (
+                        !box
+                        || !Number.isFinite(box.x)
+                        || !Number.isFinite(box.y)
+                        || !Number.isFinite(box.width)
+                        || !Number.isFinite(box.height)
+                      ) {
+                        return null;
+                      }
+
+                      const imgW = imageInference.imageSize.width;
+                      const imgH = imageInference.imageSize.height;
+
+                      // Clamp coordinates safely within image bounds
+                      const x = Math.max(0, Math.min(imgW, box.x));
+                      const y = Math.max(0, Math.min(imgH, box.y));
+                      const width = Math.max(0, Math.min(imgW - x, box.width));
+                      const height = Math.max(0, Math.min(imgH - y, box.height));
+
+                      if (width <= 0 || height <= 0) return null;
+
+                      const isPipe = detection.class === 'pipe';
+                      const boxClass = isPipe ? 'detection-box-pipe' : 'detection-box-object';
+                      const labelBgClass = isPipe ? 'detection-label-bg-pipe' : 'detection-label-bg-object';
+                      const labelText = `${detection.class.toUpperCase()} ${(detection.confidence * 100).toFixed(1)}%`;
+
+                      // Dynamically size badge relative to original image pixel coordinates
+                      const fontScale = Math.max(14, Math.round(imgW * 0.016));
+                      const charWidth = fontScale * 0.62;
+                      const badgeWidth = Math.round(labelText.length * charWidth + 16);
+                      const badgeHeight = Math.round(fontScale * 1.6);
+
+                      // Avoid badge clipping outside image boundary
+                      const badgeY = y >= badgeHeight ? y - badgeHeight : y;
+                      const badgeX = x + badgeWidth > imgW ? Math.max(0, imgW - badgeWidth) : x;
+
+                      return (
+                        <g key={`${detection.model || 'det'}-${index}`}>
+                          <rect
+                            x={x}
+                            y={y}
+                            width={width}
+                            height={height}
+                            className={boxClass}
+                          />
+                          <rect
+                            x={badgeX}
+                            y={badgeY}
+                            width={badgeWidth}
+                            height={badgeHeight}
+                            rx={badgeHeight * 0.25}
+                            className={labelBgClass}
+                          />
+                          <text
+                            x={badgeX + 8}
+                            y={badgeY + badgeHeight * 0.72}
+                            fontSize={fontScale}
+                            className="detection-label-text"
+                          >
+                            {labelText}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
+              </div>
+
+              {/* Status and Summary Badges */}
+              <div className="detection-summary-bar">
+                <div className="detection-badge-group">
+                  <span className="detection-pill detection-pill-model">
+                    Model: {imageInference?.model ? imageInference.model.replace('_', ' ').toUpperCase() : 'Faster R-CNN'}
+                  </span>
+                  {imageInference?.status === 'DETECTIONS_AVAILABLE' && (
+                    imageInference.detectionCount > 0 ? (
+                      imageInference.detections.map((d, i) => (
+                        <span
+                          key={`pill-${i}`}
+                          className={`detection-pill ${d.class === 'pipe' ? 'detection-pill-pipe' : 'detection-pill-object'}`}
+                        >
+                          ● {d.class.toUpperCase()}: {(d.confidence * 100).toFixed(1)}%
+                        </span>
+                      ))
+                    ) : (
+                      <span className="detection-pill detection-pill-none">
+                        No utility objects detected (Threshold: {imageInference?.threshold ?? 0.3})
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {imageInference?.imageSize && (
+                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                    Dimensions: {imageInference.imageSize.width} × {imageInference.imageSize.height} px
+                  </span>
+                )}
+              </div>
+
+              {imageInference?.message && (
+                <p className="text-muted" style={{ marginTop: '8px', fontSize: '0.85rem' }}>
+                  {imageInference.message}
+                </p>
+              )}
+
+              {imageInference?.limitation && (
+                <div style={{ marginTop: '8px', padding: '8px 12px', background: '#f8fafc', borderRadius: '6px', fontSize: '0.8rem', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                  <strong>Model Limitation:</strong> {imageInference.limitation}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
+            <button className="btn-secondary" onClick={() => setStep(1)}>BACK</button>
+            <button className="btn-primary" onClick={() => setStep(3)}>CONTINUE TO SENSORS</button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="panel">
+          <h3>Software Sensor Simulation</h3>
+          <p className="text-muted" style={{marginBottom: '15px'}}>
+            No physical IoT sensors are used in the current prototype. The values below are generated via software simulation.
+          </p>
+
+          <button className="btn-primary" onClick={handleGenerateSensor} disabled={sensorLoading} style={{width: 'auto', padding: '10px 20px', marginBottom: '20px'}}>
+            {sensorLoading ? 'Generating...' : 'GENERATE SENSOR DATA'}
+          </button>
+
+          {sensorError && <div className="workflow-message error-message" role="alert">{sensorError}</div>}
+
+          {sensors && (
+            <div style={{background: '#f8f9fa', padding: '20px', borderRadius: '8px'}}>
+              <h4 style={{marginBottom: '10px', color: '#2980b9'}}>Source: Software Simulation</h4>
+              <div style={{display: 'flex', gap: '30px'}}>
+                <div>
+                  <div className="text-muted">Vibration</div>
+                  <div style={{fontSize: '1.5rem', fontWeight: 'bold'}}>{sensors.vibration}</div>
+                </div>
+                <div>
+                  <div className="text-muted">Acoustic Level</div>
+                  <div style={{fontSize: '1.5rem', fontWeight: 'bold'}}>{sensors.acousticLevel}</div>
+                </div>
+                <div>
+                  <div className="text-muted">Soil Moisture</div>
+                  <div style={{fontSize: '1.5rem', fontWeight: 'bold'}}>{sensors.soilMoisture ?? sensors.soilCondition}</div>
+                </div>
+                <div>
+                  <div className="text-muted">Gas Reading</div>
+                  <div style={{fontSize: '1.5rem', fontWeight: 'bold'}}>{sensors.gasReading ?? 0.05}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
+            <button className="btn-secondary" onClick={() => setStep(2)}>BACK</button>
+            <button className="btn-primary" onClick={() => setStep(4)} disabled={!sensors}>CONTINUE TO ANALYSIS</button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="panel">
+          <h3>Confirm and Analyze</h3>
+          <p className="text-muted">Mapped utility proximity is not trained AI or an excavation-risk prediction. Sensor readings shown here are software-simulated. Pipe depth is not available in the utility datasets. The risk API will return an unavailable status unless a compatible trained excavation-risk model is configured; no rule-based fallback is used.</p>
+          <p>Review the collected data before submitting for excavation-risk analysis.</p>
+
+          <div style={{marginTop: '20px', display: 'flex', gap: '20px', flexWrap: 'wrap'}}>
+            <div style={{flex: 1, minWidth: '200px'}}>
+              <strong>Location:</strong> {locationName}<br/>
+              <strong>Coordinates:</strong> {position.lat.toFixed(4)}, {position.lng.toFixed(4)}<br/>
+              <strong>Depth:</strong> {depth}m<br/>
+              <strong>Radius:</strong> {radius}m
+            </div>
+            <div style={{flex: 1, minWidth: '200px'}}>
+            <strong>Mapped utility records matched:</strong> {nearbyUtilities.length}<br/>
+              <strong>Sensors Generated:</strong> Yes<br/>
+              <strong>Site image preview:</strong> {imagePreview ? 'Available locally' : 'Not provided'}
+            </div>
+          </div>
+          <p className="text-muted" style={{marginTop: '16px'}}>
+            Utility proximity is mapped-record context, not a validated excavation-risk prediction. Sensor readings are software simulations, not field measurements.
+          </p>
+
+          <div style={{display: 'flex', gap: '10px', marginTop: '30px'}}>
+            <button className="btn-secondary" onClick={() => setStep(3)}>BACK</button>
+            <button className="btn-primary" onClick={runRiskAnalysis} disabled={analyzing}>
+              {analyzing ? 'RUNNING ANALYSIS...' : 'START EXCAVATION ANALYSIS'}
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+export default MapAnalysis;

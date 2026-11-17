@@ -1,0 +1,265 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import API from '../services/api';
+
+const PAGE_SIZE = 25;
+
+function Reports() {
+  const navigate = useNavigate();
+  const [reports, setReports] = useState([]);
+  const [stats, setStats] = useState({ totalReports: 0, highRiskReports: 0, mediumRiskReports: 0, lowRiskReports: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [deletingId, setDeletingId] = useState('');
+  const [reloadCount, setReloadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const fetchReportsAndStats = async () => {
+      try {
+        const [reportsRes, statsRes] = await Promise.all([
+          API.get('/reports', { params: { page: pagination.page, limit: PAGE_SIZE } }),
+          API.get('/reports/stats').catch(() => ({ data: null }))
+        ]);
+        if (!active) return;
+        setReports(Array.isArray(reportsRes.data?.data) ? reportsRes.data.data : []);
+        setPagination(reportsRes.data?.pagination || {
+          page: pagination.page, limit: PAGE_SIZE, total: 0, totalPages: 1,
+        });
+        if (statsRes && statsRes.data) {
+          setStats({
+            totalReports: statsRes.data.totalReports || 0,
+            highRiskReports: statsRes.data.highRiskReports || 0,
+            mediumRiskReports: statsRes.data.mediumRiskReports || 0,
+            lowRiskReports: statsRes.data.lowRiskReports || 0,
+          });
+        }
+        setError('');
+      } catch (requestError) {
+        if (active) {
+          setError(requestError.response?.data?.message || 'Unable to load reports. Please try again.');
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchReportsAndStats();
+    return () => { active = false; };
+  }, [pagination.page, reloadCount]);
+
+  const handleExportCsv = () => {
+    if (reports.length === 0) return;
+    let csv = 'Report_ID,Date,Location,Latitude,Longitude,Depth_m,Radius_m,Risk_Level,Consensus_Class,Models_Evaluated\n';
+    reports.forEach(r => {
+      const modelsStr = r.availableModels ? r.availableModels.join(';') : 'RF;XGB;LGB';
+      csv += `"${r._id}","${new Date(r.createdAt).toISOString()}","${r.location.replace(/"/g, '""')}",${r.latitude},${r.longitude},${r.depth},${r.radius},"${r.riskLevel}","${r.consensusClass || r.riskLevel}","${modelsStr}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `DigSafeAI_Reports_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this report?')) return;
+
+    setDeletingId(id);
+    setActionError('');
+    try {
+      await API.delete(`/reports/${id}`);
+      const nextPage = reports.length === 1 && pagination.page > 1
+        ? pagination.page - 1
+        : pagination.page;
+      if (nextPage !== pagination.page) {
+        setLoading(true);
+        setPagination((current) => ({ ...current, page: nextPage }));
+      } else {
+        setLoading(true);
+        setReloadCount((current) => current + 1);
+      }
+    } catch (requestError) {
+      setActionError(requestError.response?.data?.message || 'Unable to delete this report. Please try again.');
+    } finally {
+      setDeletingId('');
+    }
+  };
+
+  const handleDownload = (report) => {
+    let content = `DIGSAFE AI HISTORICAL RISK RECORD\n`;
+    content += `This is a previously stored result, not a validated AI prediction or safety certification.\n`;
+    content += `Assessment Mode: ${report.assessmentMode || 'Historical mode not recorded'}\n`;
+    content += `Generated At: ${new Date(report.createdAt).toLocaleString()}\n\n`;
+    content += `LOCATION\nName: ${report.location}\n`;
+    content += `Coordinates: ${report.latitude}, ${report.longitude}\n\n`;
+    content += `EXCAVATION DETAILS\nDepth: ${report.depth}m\nRadius: ${report.radius}m\n\n`;
+    content += `STORED RISK RESULT (HISTORICAL)\nHazard Score: ${report.hazardScore}\nRisk Level: ${report.riskLevel}\n`;
+    content += `Warning: ${report.warning || 'None'}\n\n`;
+    content += `SENSOR DATA (Software Simulated)\nVibration: ${report.sensorInformation?.vibration}\n`;
+    content += `Acoustic Level: ${report.sensorInformation?.acousticLevel}\nSoil Condition: ${report.sensorInformation?.soilCondition}\n\n`;
+    content += `NEARBY UTILITIES\n`;
+    if (report.nearbyUtilities && report.nearbyUtilities.length > 0) {
+      report.nearbyUtilities.forEach((utility) => {
+        content += `- ${utility.source} ${utility.utilityType} (Distance: ${utility.distance}m)\n`;
+      });
+    } else {
+      content += 'No nearby utilities recorded for this historical result.\n';
+    }
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `DigSafeAI_Report_${report._id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2>Excavation Risk Reports</h2>
+          <p className="text-muted" style={{ fontSize: '0.9rem', marginTop: '4px' }}>
+            Historical and verified AI assessment logs persisted in MongoDB.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-secondary" onClick={handleExportCsv} disabled={reports.length === 0} style={{ marginTop: 0 }}>
+            📥 EXPORT CSV
+          </button>
+          <button className="btn-primary" onClick={() => navigate('/map-analysis')} style={{ width: 'auto', padding: '10px 20px', marginTop: 0 }}>
+            START NEW ANALYSIS
+          </button>
+        </div>
+      </div>
+
+      {/* Reports Statistical Breakdown Cards */}
+      <div className="dashboard-grid" style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <div className="stat-card">
+          <div className="stat-title">Total Assessments</div>
+          <div className="stat-value">{stats.totalReports}</div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>All historical records</span>
+        </div>
+        <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
+          <div className="stat-title">High Risk Assessments</div>
+          <div className="stat-value" style={{ color: '#ef4444' }}>{stats.highRiskReports}</div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Immediate strike hazard</span>
+        </div>
+        <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+          <div className="stat-title">Medium Risk Assessments</div>
+          <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.mediumRiskReports}</div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Active corridor caution</span>
+        </div>
+        <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
+          <div className="stat-title">Low Risk Assessments</div>
+          <div className="stat-value" style={{ color: '#10b981' }}>{stats.lowRiskReports}</div>
+          <span className="text-muted" style={{ fontSize: '0.75rem' }}>Standard vigilance</span>
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginTop: '0' }}>
+        <p className="text-muted" role="note" style={{ fontSize: '0.85rem' }}>
+          Showing analysis reports saved to the database. Each report preserves full site coordinates, excavation parameters, sensor context, and multi-model consensus predictions.
+        </p>
+        {actionError && <p className="error-text" role="alert">{actionError}</p>}
+        {loading ? <p className="page-state" role="status">Loading reports...</p> : error ? (
+          <div className="page-state error-message" role="alert">
+            <p>{error}</p>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setLoading(true);
+                setError('');
+                setReloadCount((current) => current + 1);
+              }}
+            >
+              RETRY
+            </button>
+          </div>
+        ) : reports.length === 0 ? (
+          <p className="text-muted" role="status">
+            {pagination.total === 0 ? 'No historical reports available yet.' : 'No reports are available on this page.'}
+          </p>
+        ) : (
+          <>
+            <p className="text-muted" role="status">
+              Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} reports
+            </p>
+            <div className="table-responsive">
+              <table className="data-table reports-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Location</th>
+                    <th>Depth</th>
+                    <th>Radius</th>
+                    <th>Historical Score</th>
+                    <th>Historical Level</th>
+                    <th className="reports-actions-column">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((report) => (
+                    <tr key={report._id}>
+                      <td>{new Date(report.createdAt).toLocaleString()}</td>
+                      <td className="reports-location">{report.location}</td>
+                      <td>{report.depth}m</td>
+                      <td>{report.radius}m</td>
+                      <td>{report.hazardScore}</td>
+                      <td><span className={`badge badge-${report.riskLevel}`}>{report.riskLevel}</span></td>
+                      <td className="reports-actions-column">
+                        <div className="report-actions">
+                          <button onClick={() => navigate(`/risk-result/${report._id}`)} className="btn-secondary" style={{ marginTop: 0, padding: '5px 10px' }}>VIEW</button>
+                          <button onClick={() => handleDownload(report)} className="btn-secondary" style={{ marginTop: 0, padding: '5px 10px' }}>DOWNLOAD</button>
+                          <button onClick={() => handleDelete(report._id)} disabled={deletingId === report._id} className="btn-secondary" style={{ marginTop: 0, padding: '5px 10px', color: '#e74c3c' }}>
+                            {deletingId === report._id ? 'DELETING...' : 'DELETE'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex-between" style={{ marginTop: '16px' }}>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setLoading(true);
+                  setPagination((current) => ({ ...current, page: current.page - 1 }));
+                }}
+                disabled={pagination.page <= 1 || loading}
+              >
+                PREVIOUS
+              </button>
+              <span className="text-muted" aria-live="polite">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setLoading(true);
+                  setPagination((current) => ({ ...current, page: current.page + 1 }));
+                }}
+                disabled={pagination.page >= pagination.totalPages || loading}
+              >
+                NEXT
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Reports;
