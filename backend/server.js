@@ -47,10 +47,11 @@ function createApp(config = getRuntimeConfig(), mongoConnection = mongoose.conne
   app.use(cors({
     origin: function originMatches(requestOrigin, callback) {
       if (!requestOrigin) return callback(null, true);
-      // Allow exact match or any vercel.app preview deployment
+      // Allow exact match, any vercel.app, any netlify.app, or local dev
       if (
         config.corsOrigins.includes(requestOrigin) ||
         requestOrigin.endsWith('.vercel.app') ||
+        requestOrigin.endsWith('.netlify.app') ||
         requestOrigin.includes('localhost')
       ) {
         return callback(null, true);
