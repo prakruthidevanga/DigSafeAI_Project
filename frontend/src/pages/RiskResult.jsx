@@ -348,69 +348,6 @@ function RiskResult() {
           </div>
         </div>
 
-        {/* Collapsible Technical Diagnostics (Restricted/Academic Evaluator Section) */}
-        <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
-          <button 
-            type="button" 
-            onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
-            className="btn-secondary"
-            style={{ width: 'auto', padding: '8px 16px', fontSize: '0.84rem' }}
-          >
-            {showTechnicalDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            {showTechnicalDetails ? 'Hide Academic Machine Learning Diagnostics' : 'View Academic Machine Learning Diagnostics'}
-          </button>
-
-          {showTechnicalDetails && Object.keys(models).length > 0 && (
-            <div style={{ marginTop: '16px', background: '#FFFFFF', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h4 style={{ margin: 0, color: 'var(--brand-primary-900)', fontSize: '0.95rem', fontWeight: 700 }}>Verified Machine Learning Models Evaluated</h4>
-                <span className="badge" style={{ background: result.agreement ? '#DCFCE7' : '#FEF3C7', color: result.agreement ? '#166534' : '#92400E' }}>
-                  {result.agreement ? 'Unanimous Model Agreement' : 'Majority Consensus'}
-                </span>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-                The ML models run behind the scenes as secondary validation. They evaluate 13 geospatial and environmental features against synthetic training distributions.
-              </p>
-              <div className="table-responsive">
-                <table className="data-table" style={{ fontSize: '0.84rem' }}>
-                  <thead>
-                    <tr>
-                      <th>Algorithm</th>
-                      <th>Predicted Class</th>
-                      <th>Class Distribution</th>
-                      <th>Engine Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {['random_forest', 'xgboost', 'lightgbm'].map((mKey) => {
-                      const mData = models[mKey];
-                      if (!mData) {
-                        return (
-                          <tr key={mKey}>
-                            <td><strong>{mKey.replace('_', ' ').toUpperCase()}</strong></td>
-                            <td colSpan="3" style={{ color: 'var(--text-faint)' }}>Not evaluated</td>
-                          </tr>
-                        );
-                      }
-                      const probs = Array.isArray(mData.classProbabilities) ? mData.classProbabilities : [];
-                      return (
-                        <tr key={mKey}>
-                          <td><strong>{mKey === 'random_forest' ? 'Random Forest' : mKey === 'xgboost' ? 'XGBoost' : 'LightGBM'}</strong></td>
-                          <td><span className={`badge badge-${(mData.predictedClass || 'UNKNOWN').toUpperCase()}`}>{mData.predictedClass}</span></td>
-                          <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            {probs.map(p => `${p.label}: ${(p.probability * 100).toFixed(0)}%`).join(' · ')}
-                          </td>
-                          <td><span style={{ color: 'var(--brand-primary-600)', fontSize: '0.8rem', fontWeight: 600 }}>Active (Joblib)</span></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Bottom Action Footer: Convenient Access to Reports & Next Actions */}
         <div style={{
           marginTop: '32px',

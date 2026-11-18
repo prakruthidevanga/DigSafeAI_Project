@@ -297,15 +297,29 @@ function MapAnalysis() {
     setSearchError('');
     setSearchResults([]);
     try {
-      const q = encodeURIComponent(`${searchQuery.trim()}, Bengaluru, Karnataka, India`);
-      const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`, {
+      const trimmedQuery = searchQuery.trim();
+      // First try broad search
+      let q = encodeURIComponent(trimmedQuery.toLowerCase().includes('bengaluru') || trimmedQuery.toLowerCase().includes('bangalore')
+        ? trimmedQuery
+        : `${trimmedQuery}, Bengaluru, Karnataka, India`);
+      let resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`, {
         headers: { 'Accept-Language': 'en' }
       });
-      const data = await resp.json();
+      let data = await resp.json();
+      
+      // Fallback to global search if city-scoped search yielded no items
+      if (!Array.isArray(data) || data.length === 0) {
+        q = encodeURIComponent(trimmedQuery);
+        resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`, {
+          headers: { 'Accept-Language': 'en' }
+        });
+        data = await resp.json();
+      }
+
       if (Array.isArray(data) && data.length > 0) {
         setSearchResults(data);
       } else {
-        setSearchError('No matching locations found in Bengaluru. Try another landmark or area name.');
+        setSearchError('No matching locations found. You can also click directly anywhere on the map.');
       }
     } catch (err) {
       setSearchError('Geocoding service unavailable. You can click on the map or enter coordinates directly.');
@@ -1250,40 +1264,6 @@ function MapAnalysis() {
           </div>
         </div>
       )}
-
-      {/* Collapsed Technical Diagnostic Details Accordion for Academic Evaluation */}
-      <details className="technical-accordion">
-        <summary>⚙️ Technical System & Model Diagnostics (Academic Evaluator View)</summary>
-        <div className="technical-accordion-content">
-          <p className="text-muted" style={{ margin: '0 0 12px 0' }}>
-            This diagnostic section provides architecture details for academic project defense and verification.
-          </p>
-          {modelStatus ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <strong>Excavation Risk Models:</strong> {modelStatus.excavationRisk.status}
-                <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                  Artifacts: Random Forest, XGBoost, LightGBM (13-feature schema)
-                </div>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <strong>Pipe Diameter Pipeline:</strong> {modelStatus.diameterPrediction?.status || 'READY'}
-                <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                  Regressor: XGBoost Regressor (MAE: 17.6mm, R²: 0.665)
-                </div>
-              </div>
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                <strong>Vision Inspection:</strong> Faster R-CNN ({modelStatus.imageDetection?.fasterRcnn?.status || 'READY'})
-                <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                  Framework: PyTorch ResNet-50 FPN
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-muted">Loading system diagnostics...</div>
-          )}
-        </div>
-      </details>
     </div>
   );
 }
