@@ -47,7 +47,14 @@ function createApp(config = getRuntimeConfig(), mongoConnection = mongoose.conne
   app.use(cors({
     origin: function originMatches(requestOrigin, callback) {
       if (!requestOrigin) return callback(null, true);
-      if (config.corsOrigins.includes(requestOrigin)) return callback(null, true);
+      // Allow exact match or any vercel.app preview deployment
+      if (
+        config.corsOrigins.includes(requestOrigin) ||
+        requestOrigin.endsWith('.vercel.app') ||
+        requestOrigin.includes('localhost')
+      ) {
+        return callback(null, true);
+      }
       const error = new Error('CORS origin not allowed');
       error.code = 'CORS_ORIGIN_NOT_ALLOWED';
       return callback(error);
