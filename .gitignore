@@ -44,10 +44,10 @@ logs/
 *.log.*
 
 # ─── Local model artifacts ───────────────────────────────────────────────────
-# Trained model files are large and contain synthetic labels not suitable for VCS.
-# Retrain locally using backend/ml/retrain_xgboost.py if needed.
-backend/ml/models/*.joblib
-backend/ml/vision/
+# Keep model artifacts tracked for production deployment
+!backend/ml/models/*.joblib
+!backend/ml/vision/
+
 
 # ─── Large dataset files ─────────────────────────────────────────────────────
 # KML and CSV datasets are imported via `node scripts/importDatasets.js`.
