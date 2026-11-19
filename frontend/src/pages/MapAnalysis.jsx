@@ -169,6 +169,9 @@ function MapAnalysis() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const searchDebounceRef = React.useRef(null);
+  const searchInputRef = React.useRef(null);
   const [manualLat, setManualLat] = useState('12.97630');
   const [manualLng, setManualLng] = useState('77.59290');
 
@@ -290,42 +293,108 @@ function MapAnalysis() {
     }
   }, [position]);
 
-  const handleSearchLocation = async (e) => {
-    if (e) e.preventDefault();
-    if (!searchQuery.trim()) return;
+  // Fuzzy search helper that handles spelling mistakes and typeahead suggestions
+  const fetchLocationSuggestions = async (rawQuery) => {
+    const trimmed = (rawQuery || '').trim();
+    if (!trimmed || trimmed.length < 2) {
+      setSearchResults([]);
+      setIsDropdownOpen(false);
+      setSearchError('');
+      return;
+    }
+
     setSearchLoading(true);
     setSearchError('');
-    setSearchResults([]);
     try {
-      const trimmedQuery = searchQuery.trim();
-      // First try broad search
-      let q = encodeURIComponent(trimmedQuery.toLowerCase().includes('bengaluru') || trimmedQuery.toLowerCase().includes('bangalore')
-        ? trimmedQuery
-        : `${trimmedQuery}, Bengaluru, Karnataka, India`);
-      let resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`, {
-        headers: { 'Accept-Language': 'en' }
-      });
-      let data = await resp.json();
-      
-      // Fallback to global search if city-scoped search yielded no items
-      if (!Array.isArray(data) || data.length === 0) {
-        q = encodeURIComponent(trimmedQuery);
-        resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5`, {
-          headers: { 'Accept-Language': 'en' }
-        });
-        data = await resp.json();
+      // 1. First query Photon (Komoot/OSM) with Bengaluru coordinate bias for typo tolerance & autocomplete
+      const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(trimmed)}&lat=12.9716&lon=77.5946&limit=6`;
+      const photonResp = await fetch(photonUrl);
+      const photonData = await photonResp.json();
+
+      let formattedResults = [];
+
+      if (photonData?.features && photonData.features.length > 0) {
+        formattedResults = photonData.features.map((feat) => {
+          const p = feat.properties;
+          const coords = feat.geometry?.coordinates || [];
+          const lon = coords[0];
+          const lat = coords[1];
+          const mainTitle = p.name || p.street || p.district || 'Location';
+          const subtitleParts = [p.district, p.city, p.state, p.country].filter(Boolean);
+          const fullLabel = [mainTitle, ...subtitleParts].join(', ');
+
+          return {
+            lat,
+            lon,
+            title: mainTitle,
+            display_name: fullLabel,
+            type: p.type || 'place'
+          };
+        }).filter(item => Number.isFinite(item.lat) && Number.isFinite(item.lon));
       }
 
-      if (Array.isArray(data) && data.length > 0) {
-        setSearchResults(data);
+      // 2. Fallback to Nominatim if Photon returns nothing
+      if (formattedResults.length === 0) {
+        const nomQuery = encodeURIComponent(
+          trimmed.toLowerCase().includes('bengaluru') || trimmed.toLowerCase().includes('bangalore')
+            ? trimmed
+            : `${trimmed}, Bengaluru, Karnataka, India`
+        );
+        const nomResp = await fetch(`https://nominatim.openstreetmap.org/search?q=${nomQuery}&format=json&limit=5`, {
+          headers: { 'Accept-Language': 'en' }
+        });
+        const nomData = await nomResp.json();
+        if (Array.isArray(nomData) && nomData.length > 0) {
+          formattedResults = nomData.map((res) => ({
+            lat: parseFloat(res.lat),
+            lon: parseFloat(res.lon),
+            title: res.display_name.split(',')[0],
+            display_name: res.display_name
+          }));
+        }
+      }
+
+      if (formattedResults.length > 0) {
+        setSearchResults(formattedResults);
+        setIsDropdownOpen(true);
       } else {
-        setSearchError('No matching locations found. You can also click directly anywhere on the map.');
+        setSearchResults([]);
+        setIsDropdownOpen(false);
+        setSearchError('No matching locations found. You can adjust the spelling or click directly anywhere on the map.');
       }
     } catch (err) {
-      setSearchError('Geocoding service unavailable. You can click on the map or enter coordinates directly.');
+      console.warn('Geocoding suggestion error:', err);
+      // Graceful fallback: do not crash or block typing
     } finally {
       setSearchLoading(false);
     }
+  };
+
+  const handleSearchInputChange = (e) => {
+    const val = e.target.value;
+    setSearchQuery(val);
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    if (!val || val.trim().length < 2) {
+      setSearchResults([]);
+      setIsDropdownOpen(false);
+      setSearchError('');
+      return;
+    }
+
+    // Debounce 280ms while user is typing
+    searchDebounceRef.current = setTimeout(() => {
+      fetchLocationSuggestions(val);
+    }, 280);
+  };
+
+  const handleSearchLocation = async (e) => {
+    if (e) e.preventDefault();
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    await fetchLocationSuggestions(searchQuery);
   };
 
   const handleSelectSearchResult = (result) => {
@@ -336,9 +405,11 @@ function MapAnalysis() {
       setPosition(newPos);
       setMapCenter([lat, lng]);
       setMapZoom(15);
-      setLocationName(result.display_name.split(',')[0]);
+      setLocationName(result.title || result.display_name.split(',')[0]);
       setSearchResults([]);
-      setSearchQuery('');
+      setIsDropdownOpen(false);
+      setSearchQuery(result.title || result.display_name.split(',')[0]);
+      setSearchError('');
     }
   };
 
@@ -571,32 +642,55 @@ function MapAnalysis() {
               Search Area or Address
             </label>
             <form onSubmit={handleSearchLocation} className="map-search-bar" style={{ display: 'flex', gap: '8px', position: 'relative' }}>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Type location (e.g. Cubbon Park, MG Road, Koramangala...)"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                style={{ flex: 1 }}
-              />
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="form-control"
+                  placeholder="Type any location or landmark (e.g. Alliance University, Koramangala, Whitefield...)"
+                  value={searchQuery}
+                  onChange={handleSearchInputChange}
+                  onFocus={() => { if (searchResults.length > 0) setIsDropdownOpen(true); }}
+                  style={{ width: '100%' }}
+                />
+                {searchLoading && (
+                  <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: '#10B981', fontWeight: 600 }}>
+                    Searching...
+                  </span>
+                )}
+              </div>
               <button type="submit" className="btn-primary" disabled={searchLoading} style={{ marginTop: 0, padding: '0.6rem 1.2rem' }}>
-                {searchLoading ? 'Searching...' : 'Search'}
+                Search
               </button>
-              {searchResults.length > 0 && (
+              {isDropdownOpen && searchResults.length > 0 && (
                 <div className="search-results-dropdown" style={{
                   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
-                  background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: '4px'
+                  background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', marginTop: '4px',
+                  maxHeight: '260px', overflowY: 'auto'
                 }}>
                   {searchResults.map((res, idx) => (
                     <div
                       key={`sr-${idx}`}
                       className="search-result-item"
-                      style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
+                      style={{
+                        padding: '10px 14px',
+                        borderBottom: idx < searchResults.length - 1 ? '1px solid #f1f5f9' : 'none',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
                       onClick={() => handleSelectSearchResult(res)}
                     >
-                      <strong>{res.display_name.split(',')[0]}</strong>
-                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>{res.display_name}</div>
+                      <span style={{ fontSize: '1rem', marginTop: '1px' }}>📍</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>{res.title}</div>
+                        <div className="text-muted" style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', lineHeight: 1.3 }}>{res.display_name}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
