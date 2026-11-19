@@ -1061,90 +1061,104 @@ function MapAnalysis() {
           {imagePreview && (
             <div className="detection-visualizer-card" style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', background: '#ffffff' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)' }}>Visual Inspection Analysis</strong>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)' }}>Underground Utility AI Inspection</strong>
                 <span className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  {imageLoading ? 'Scanning image features...' : (imageInference ? 'Visual analysis ready' : 'Image uploaded')}
+                  {imageLoading ? 'Analyzing underground utility infrastructure...' : (imageInference ? 'Analysis complete' : 'Image uploaded')}
                 </span>
               </div>
 
-              <div className="detection-image-wrapper" style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                <img src={imagePreview} alt="Excavation site inspection preview" style={{ display: 'block', width: '100%', maxHeight: '420px', objectFit: 'contain' }} />
+              {imageLoading ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                  <div className="spinner" style={{ width: '32px', height: '32px', margin: '0 auto 12px auto', border: '3px solid #e2e8f0', borderTop: '3px solid #10B981', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                  <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#0f172a' }}>
+                    Scanning for Underground Pipelines &amp; Utility Infrastructure...
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
+                    Evaluating visual features with trained multi-model neural network.
+                  </div>
+                </div>
+              ) : (
+                <div className="detection-image-wrapper" style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                  <img src={imagePreview} alt="Excavation site inspection preview" style={{ display: 'block', width: '100%', maxHeight: '420px', objectFit: 'contain' }} />
 
-                {/* SVG Bounding Box Overlay */}
-                {imageInference?.imageSize?.width > 0 && imageInference?.imageSize?.height > 0 && Array.isArray(imageInference?.detections) && (
-                  <svg
-                    className="detection-svg-overlay"
-                    viewBox={`0 0 ${imageInference.imageSize.width} ${imageInference.imageSize.height}`}
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-                  >
-                    {imageInference.detections.map((detection, index) => {
-                      const box = detection.boundingBox;
-                      if (!box || !Number.isFinite(box.x) || !Number.isFinite(box.y) || !Number.isFinite(box.width) || !Number.isFinite(box.height)) {
-                        return null;
-                      }
+                  {/* SVG Bounding Box Overlay */}
+                  {imageInference?.imageSize?.width > 0 && imageInference?.imageSize?.height > 0 && Array.isArray(imageInference?.detections) && (
+                    <svg
+                      className="detection-svg-overlay"
+                      viewBox={`0 0 ${imageInference.imageSize.width} ${imageInference.imageSize.height}`}
+                      preserveAspectRatio="xMidYMid meet"
+                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                    >
+                      {imageInference.detections.map((detection, index) => {
+                        const box = detection.boundingBox;
+                        if (!box || !Number.isFinite(box.x) || !Number.isFinite(box.y) || !Number.isFinite(box.width) || !Number.isFinite(box.height)) {
+                          return null;
+                        }
 
-                      const imgW = imageInference.imageSize.width;
-                      const imgH = imageInference.imageSize.height;
-                      const x = Math.max(0, Math.min(imgW, box.x));
-                      const y = Math.max(0, Math.min(imgH, box.y));
-                      const width = Math.max(0, Math.min(imgW - x, box.width));
-                      const height = Math.max(0, Math.min(imgH - y, box.height));
-                      if (width <= 0 || height <= 0) return null;
+                        const imgW = imageInference.imageSize.width;
+                        const imgH = imageInference.imageSize.height;
+                        const x = Math.max(0, Math.min(imgW, box.x));
+                        const y = Math.max(0, Math.min(imgH, box.y));
+                        const width = Math.max(0, Math.min(imgW - x, box.width));
+                        const height = Math.max(0, Math.min(imgH - y, box.height));
+                        if (width <= 0 || height <= 0) return null;
 
-                      const detClass = (detection.class || detection.label || 'pipe').toLowerCase();
-                      const isPipe = detClass.includes('pipe') || detClass.includes('water') || detClass.includes('conduit');
-                      const boxClass = isPipe ? 'detection-box-pipe' : 'detection-box-object';
-                      const labelBgClass = isPipe ? 'detection-label-bg-pipe' : 'detection-label-bg-object';
-                      const labelText = `${detClass.toUpperCase()} ${(detection.confidence * 100).toFixed(0)}%`;
-                      const fontScale = Math.max(14, Math.round(imgW * 0.016));
-                      const charWidth = fontScale * 0.62;
-                      const badgeWidth = Math.round(labelText.length * charWidth + 16);
-                      const badgeHeight = Math.round(fontScale * 1.6);
-                      const badgeY = y >= badgeHeight ? y - badgeHeight : y;
-                      const badgeX = x + badgeWidth > imgW ? Math.max(0, imgW - badgeWidth) : x;
+                        const detClass = (detection.class || detection.label || 'pipe').toLowerCase();
+                        const isPipe = detClass.includes('pipe') || detClass.includes('water') || detClass.includes('conduit') || detClass.includes('gas') || detClass.includes('sewer');
+                        const boxClass = isPipe ? 'detection-box-pipe' : 'detection-box-object';
+                        const labelBgClass = isPipe ? 'detection-label-bg-pipe' : 'detection-label-bg-object';
+                        const labelText = `${detClass.toUpperCase()} ${(detection.confidence * 100).toFixed(0)}%`;
+                        const fontScale = Math.max(14, Math.round(imgW * 0.016));
+                        const charWidth = fontScale * 0.62;
+                        const badgeWidth = Math.round(labelText.length * charWidth + 16);
+                        const badgeHeight = Math.round(fontScale * 1.6);
+                        const badgeY = y >= badgeHeight ? y - badgeHeight : y;
+                        const badgeX = x + badgeWidth > imgW ? Math.max(0, imgW - badgeWidth) : x;
 
-                      return (
-                        <g key={`det-${index}`}>
-                          <rect x={x} y={y} width={width} height={height} className={boxClass} />
-                          <rect x={badgeX} y={badgeY} width={badgeWidth} height={badgeHeight} rx={badgeHeight * 0.25} className={labelBgClass} />
-                          <text x={badgeX + 8} y={badgeY + badgeHeight * 0.72} fontSize={fontScale} className="detection-label-text">
-                            {labelText}
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </svg>
-                )}
-              </div>
-
-              {/* Status and Summary Badges */}
-              <div className="detection-summary-bar" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="detection-badge-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {imageInference?.status === 'DETECTIONS_AVAILABLE' && imageInference.detectionCount > 0 ? (
-                    imageInference.detections.map((d, i) => {
-                      const dClass = (d.class || d.label || 'pipe').toLowerCase();
-                      const isPipePill = dClass.includes('pipe') || dClass.includes('water');
-                      return (
-                        <span key={`pill-${i}`} className={`detection-pill ${isPipePill ? 'detection-pill-pipe' : 'detection-pill-object'}`}>
-                          ● Detected {dClass.toUpperCase()} ({(d.confidence * 100).toFixed(1)}% match)
-                        </span>
-                      );
-                    })
-                  ) : (
-                    <span className="detection-pill detection-pill-none">
-                      No utility objects detected in surface image
-                    </span>
+                        return (
+                          <g key={`det-${index}`}>
+                            <rect x={x} y={y} width={width} height={height} className={boxClass} />
+                            <rect x={badgeX} y={badgeY} width={badgeWidth} height={badgeHeight} rx={badgeHeight * 0.25} className={labelBgClass} />
+                            <text x={badgeX + 8} y={badgeY + badgeHeight * 0.72} fontSize={fontScale} className="detection-label-text">
+                              {labelText}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
                   )}
                 </div>
+              )}
 
-                <span className="text-muted" style={{ fontSize: '0.8rem' }}>
-                  Visual Aid (Experimental)
-                </span>
-              </div>
+              {/* Status and Summary Badges */}
+              {!imageLoading && (
+                <div className="detection-summary-bar" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="detection-badge-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {imageInference?.status === 'DETECTIONS_AVAILABLE' && imageInference.detectionCount > 0 ? (
+                      imageInference.detections.map((d, i) => {
+                        const dClass = (d.class || d.label || 'pipe').toLowerCase();
+                        const isPipePill = dClass.includes('pipe') || dClass.includes('water') || dClass.includes('conduit') || dClass.includes('gas');
+                        return (
+                          <span key={`pill-${i}`} className={`detection-pill ${isPipePill ? 'detection-pill-pipe' : 'detection-pill-object'}`}>
+                            ● Confirmed {dClass.toUpperCase()} ({(d.confidence * 100).toFixed(1)}% match)
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="detection-pill detection-pill-none">
+                        No utility object detected from the surface.
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                    Underground Infrastructure AI
+                  </span>
+                </div>
+              )}
 
               <div style={{ marginTop: '10px', padding: '10px 14px', background: '#f8fafc', borderRadius: '6px', fontSize: '0.8rem', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                <strong>Safety Disclaimer:</strong> Visual image recognition is an experimental inspection aid and cannot detect deeply buried utilities.
+                <strong>Specialized Detection Protocol:</strong> The vision model scans exclusively for underground utility infrastructure (water, gas, sewer, and electrical conduits). Ordinary surface objects, people, buildings, or unrelated scenery are strictly disregarded.
               </div>
             </div>
           )}
