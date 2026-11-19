@@ -101,20 +101,26 @@ def detect_utility_features(image_bytes):
                 }
             })
 
-    # Fallback general trench pipe feature if features indicate an active excavation pit
-    if not detections:
-        # Check if center area has trench excavation profile
-        detections.append({
-            "class": "pipe",
-            "label": "exposed_utility_corridor",
-            "confidence": 0.84,
-            "boundingBox": {
-                "x": int(w * 0.15),
-                "y": int(h * 0.45),
-                "width": int(w * 0.70),
-                "height": int(h * 0.40)
-            }
-        })
+    # Require genuine utility/excavation ground texture check
+    # Images that are mostly uniform paper, documents, signatures, or blank walls must NOT detect utilities.
+    # Calculate luminance variance across image to detect complex ground/dirt/trench texture
+    gray_samples = [int(0.299 * pixels[x, y][0] + 0.587 * pixels[x, y][1] + 0.114 * pixels[x, y][2]) for y in range(sh) for x in range(sw)]
+    mean_gray = sum(gray_samples) / len(gray_samples)
+    variance_gray = sum((g - mean_gray) ** 2 for g in gray_samples) / len(gray_samples)
+
+    # Documents, white paper with text/signature, or blank backgrounds have high brightness and low ground variance
+    is_document_or_blank = mean_gray > 200 and variance_gray < 1600
+
+    if is_document_or_blank or not detections:
+        return {
+            "status": "DETECTIONS_AVAILABLE",
+            "model": "cv_feature_engine",
+            "detectionCount": 0,
+            "detections": [],
+            "imageSize": {"width": w, "height": h},
+            "threshold": 0.30,
+            "limitation": "No subsurface utility infrastructure detected in surface image."
+        }
 
     return {
         "status": "DETECTIONS_AVAILABLE",
