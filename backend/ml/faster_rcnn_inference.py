@@ -48,9 +48,19 @@ CLASS_NAMES = {
 
 
 def load_model():
-    """Load Faster R-CNN model and weights from local checkpoint."""
+    """Load Faster R-CNN model and weights from local checkpoint (or reassemble from chunked parts)."""
     import torch
+    import glob
     from torchvision.models.detection import fasterrcnn_resnet50_fpn
+
+    # If the combined zip does not exist, reassemble it from chunk parts (.part0, .part1, ...)
+    if not MODEL_ZIP.is_file():
+        parts = sorted(glob.glob(str(MODEL_ZIP.parent / "faster_rcnn_model.pth.zip.part*")))
+        if parts:
+            with open(MODEL_ZIP, "wb") as out_f:
+                for p in parts:
+                    with open(p, "rb") as in_f:
+                        out_f.write(in_f.read())
 
     if not MODEL_ZIP.is_file():
         raise FileNotFoundError(
@@ -65,7 +75,7 @@ def load_model():
     )
 
     try:
-        state_dict = torch.load(str(MODEL_ZIP), map_location="cpu", weights_only=True)
+        state_dict = torch.load(str(MODEL_ZIP), map_location="cpu", weights_only=False)
     except Exception as exc:
         raise ValueError(f"Failed to load Faster R-CNN checkpoint: {exc}") from exc
 

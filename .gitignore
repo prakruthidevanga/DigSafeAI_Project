@@ -46,7 +46,9 @@ logs/
 # ─── Local model artifacts ───────────────────────────────────────────────────
 # Keep model artifacts tracked for production deployment
 !backend/ml/models/*.joblib
-!backend/ml/vision/
+!backend/ml/vision/faster_rcnn/*.part*
+backend/ml/vision/faster_rcnn/faster_rcnn_model (1).pth.zip
+backend/ml/vision/detr/dataset2_detr_model (1).zip
 
 
 # ─── Large dataset files ─────────────────────────────────────────────────────

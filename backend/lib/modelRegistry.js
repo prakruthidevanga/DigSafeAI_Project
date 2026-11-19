@@ -233,7 +233,7 @@ function getModelStatus({ dependencyStatus = inspectPythonDependencies() } = {})
     imageDetection: {
       fasterRcnn: createImageModelStatus({
         artifact: MODEL_ARTIFACTS.fasterRcnn,
-        present: artifactExists(MODEL_ARTIFACTS.fasterRcnn),
+        present: artifactExists(MODEL_ARTIFACTS.fasterRcnn) || artifactExists(path.join(MODEL_ROOT, 'vision', 'faster_rcnn', 'faster_rcnn_model.pth.zip.part0')),
         dependencies: dependencyStatus,
         supportedTask: 'underground utility object detection; classes: pipe, object',
         requirements: ['torch', 'torchvision'],
