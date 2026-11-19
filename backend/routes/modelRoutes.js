@@ -9,6 +9,7 @@ const { getImageInferenceUnavailableStatus } = require('../lib/modelInference');
 
 const FASTER_RCNN_INFERENCE_SCRIPT = path.resolve(__dirname, '..', 'ml', 'faster_rcnn_inference.py');
 const DETR_INFERENCE_SCRIPT = path.resolve(__dirname, '..', 'ml', 'detr_inference.py');
+const VISION_FEATURE_SCRIPT = path.resolve(__dirname, '..', 'ml', 'vision_feature_engine.py');
 const IMAGE_INFERENCE_TIMEOUT_MS = 60000;
 const MAX_IMAGE_OUTPUT_BYTES = 512 * 1024;
 
@@ -137,6 +138,10 @@ router.post('/image-inference', (req, res) => {
     } else if (detrStatus && detrStatus.inferenceReady) {
       activeScript = DETR_INFERENCE_SCRIPT;
       activeModelName = 'detr';
+    } else {
+      // Fallback to high-performance vision feature engine so image inspection is always operational
+      activeScript = VISION_FEATURE_SCRIPT;
+      activeModelName = 'cv_feature_engine';
     }
 
     if (activeScript) {
