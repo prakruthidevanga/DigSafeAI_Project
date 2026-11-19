@@ -607,7 +607,7 @@ function MapAnalysis() {
 
           <div style={{ marginBottom: '16px' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', marginRight: '8px' }}>
-              Verified Bengaluru Demonstration Sites:
+              Quick-Select Infrastructure Corridors:
             </span>
             <div className="preset-chip-list" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
               {BENGALURU_PRESETS.map((preset, idx) => (

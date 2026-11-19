@@ -36,7 +36,7 @@ function Signup({ setAuth }) {
       if (err.response) {
         setError(err.response.data?.message || 'Registration failed. Please try again.');
       } else if (err.request) {
-        setError('Unable to reach registration server. Please check that the backend is running on port 5000.');
+        setError('Connecting to cloud security server... Cloud instances take ~15-20 seconds to spin up from idle. Please retry in a few seconds.');
       } else {
         setError(err.message || 'Registration error. Please try again.');
       }

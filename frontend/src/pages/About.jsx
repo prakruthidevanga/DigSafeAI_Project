@@ -17,7 +17,7 @@ function About() {
       }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.12)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '12px' }}>
           <ShieldCheck size={16} color="#42C290" />
-          <span>Final Year BCA AI &amp; ML Capstone Defense</span>
+          <span>Bengaluru Subsurface Asset Protection Platform</span>
         </div>
         <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 10px 0', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
           DigSafeAI: Intelligent Subsurface Utility Risk Assessment
@@ -122,10 +122,10 @@ function About() {
         <div style={{ background: '#FFFFFF', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '22px 26px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
           <AlertTriangle size={24} color="#D97706" style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <strong style={{ fontSize: '1rem', color: 'var(--brand-primary-900)' }}>Technical Scope &amp; Academic Prototype Disclosures</strong>
+            <strong style={{ fontSize: '1rem', color: 'var(--brand-primary-900)' }}>System Specifications &amp; Field Operational Boundaries</strong>
             <p style={{ margin: '6px 0 10px 0', fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              DigSafeAI is developed as an academic artificial intelligence and geospatial engineering prototype. 
-              The platform provides computerized decision-support and does not replace statutory engineering mark-outs or certified utility locators.
+              DigSafeAI is developed as an intelligent geospatial artificial intelligence decision-support platform. 
+              The platform provides computerized risk assessment and does not replace statutory engineering mark-outs or certified utility locators.
             </p>
             <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               <li><strong>Sensor Telemetry:</strong> Environmental readings are computer-modeled; physical IoT sensors are not deployed on live excavator machinery.</li>

@@ -28,8 +28,8 @@ function Login({ setAuth }) {
         // Backend responded with an HTTP status code (400, 401, 500, etc.)
         setError(err.response.data?.message || 'Invalid credentials. Please verify your email and password.');
       } else if (err.request) {
-        // Request was made but no response was received (Network error, CORS block, or server down)
-        setError('Unable to reach authentication server. Please check that the backend is running on port 5000.');
+        // Request was made but no response was received (Network error, CORS block, or server cold-starting)
+        setError('Connecting to cloud security server... Cloud instances take ~15-20 seconds to spin up from idle. Please retry in a few seconds.');
       } else {
         setError(err.message || 'Authentication error. Please try again.');
       }
