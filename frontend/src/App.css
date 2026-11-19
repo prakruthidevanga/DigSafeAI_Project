@@ -1039,3 +1039,17 @@ code, pre, .font-mono {
     grid-template-columns: 1fr;
   }
 }
+
+/* Hide Netlify / Platform Drawer & Floating Branding Badges */
+[data-netlify-badge],
+.netlify-badge,
+iframe#netlify-identity-widget,
+div[class*="netlify"],
+netlify-badge,
+[id*="netlify-badge"],
+div:has(> a[href*="netlify.com"]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
