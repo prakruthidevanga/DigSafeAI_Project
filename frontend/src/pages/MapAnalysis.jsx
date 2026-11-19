@@ -1073,9 +1073,9 @@ function MapAnalysis() {
                           detectionCount: 1,
                           detections: [
                             {
-                              label: 'water_pipe',
+                              class: 'pipe',
                               confidence: 0.94,
-                              boundingBox: { xmin: 150, ymin: 300, xmax: 650, ymax: 380 }
+                              boundingBox: { x: 150, y: 300, width: 500, height: 80 }
                             }
                           ],
                           imageSize: { width: 800, height: 500 }
@@ -1141,10 +1141,11 @@ function MapAnalysis() {
                       const height = Math.max(0, Math.min(imgH - y, box.height));
                       if (width <= 0 || height <= 0) return null;
 
-                      const isPipe = detection.class === 'pipe';
+                      const detClass = (detection.class || detection.label || 'pipe').toLowerCase();
+                      const isPipe = detClass.includes('pipe') || detClass.includes('water') || detClass.includes('conduit');
                       const boxClass = isPipe ? 'detection-box-pipe' : 'detection-box-object';
                       const labelBgClass = isPipe ? 'detection-label-bg-pipe' : 'detection-label-bg-object';
-                      const labelText = `${detection.class.toUpperCase()} ${(detection.confidence * 100).toFixed(0)}%`;
+                      const labelText = `${detClass.toUpperCase()} ${(detection.confidence * 100).toFixed(0)}%`;
                       const fontScale = Math.max(14, Math.round(imgW * 0.016));
                       const charWidth = fontScale * 0.62;
                       const badgeWidth = Math.round(labelText.length * charWidth + 16);
@@ -1170,11 +1171,15 @@ function MapAnalysis() {
               <div className="detection-summary-bar" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="detection-badge-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {imageInference?.status === 'DETECTIONS_AVAILABLE' && imageInference.detectionCount > 0 ? (
-                    imageInference.detections.map((d, i) => (
-                      <span key={`pill-${i}`} className={`detection-pill ${d.class === 'pipe' ? 'detection-pill-pipe' : 'detection-pill-object'}`}>
-                        ● Detected {d.class.toUpperCase()} ({(d.confidence * 100).toFixed(1)}% match)
-                      </span>
-                    ))
+                    imageInference.detections.map((d, i) => {
+                      const dClass = (d.class || d.label || 'pipe').toLowerCase();
+                      const isPipePill = dClass.includes('pipe') || dClass.includes('water');
+                      return (
+                        <span key={`pill-${i}`} className={`detection-pill ${isPipePill ? 'detection-pill-pipe' : 'detection-pill-object'}`}>
+                          ● Detected {dClass.toUpperCase()} ({(d.confidence * 100).toFixed(1)}% match)
+                        </span>
+                      );
+                    })
                   ) : (
                     <span className="detection-pill detection-pill-none">
                       No utility objects detected in surface image
