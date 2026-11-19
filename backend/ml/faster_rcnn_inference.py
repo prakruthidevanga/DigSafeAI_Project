@@ -84,6 +84,32 @@ def load_model():
     return model
 
 
+def verify_excavation_ground(image):
+    """
+    Strict Domain Verification: Ensures image depicts an excavation site or subterranean trench.
+    Civil excavation sites have earth, gravel, asphalt cut, or soil geology (>15%).
+    Images of people, indoor rooms, food, white documents, or everyday objects are rejected.
+    """
+    thumb = image.resize((160, 120))
+    pixels = thumb.load()
+    w, h = thumb.size
+    earth_count = 0
+    total = w * h
+
+    for y in range(h):
+        for x in range(w):
+            r, g, b = pixels[x, y]
+            # Trench earth, mud, clay, gravel, or dark cut asphalt:
+            is_earth = (
+                (r > 40 and r < 190 and g > 30 and g < 160 and b > 20 and b < 130 and r >= g and g >= b) or
+                (abs(r - g) < 22 and abs(g - b) < 22 and r > 30 and r < 130)
+            )
+            if is_earth:
+                earth_count += 1
+
+    return (earth_count / total) >= 0.15
+
+
 def run_inference(model, image_bytes, threshold=DEFAULT_THRESHOLD):
     """Run Faster R-CNN inference on raw image bytes. Returns a list of detection dicts."""
     import torch
@@ -99,6 +125,10 @@ def run_inference(model, image_bytes, threshold=DEFAULT_THRESHOLD):
         raise ValueError(f"Cannot decode image: {exc}") from exc
 
     image_width, image_height = image.size
+
+    # Domain Gate: If image is not an outdoor excavation / trench site, immediately return zero detections
+    if not verify_excavation_ground(image):
+        return [], (image_width, image_height)
 
     image_tensor = to_tensor(image)
 
