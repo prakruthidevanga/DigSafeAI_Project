@@ -6,6 +6,35 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DigSafe AI — Excavation Safety</title>
+    <style>
+      #nl-badge-frame,
+      #nl-hud-frame,
+      iframe[title*="Netlify"],
+      iframe[id*="nl-"],
+      [data-nf-variant] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        pointer-events: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+      }
+    </style>
+    <script>
+      (function() {
+        var killBadge = function() {
+          var frames = document.querySelectorAll('#nl-badge-frame, #nl-hud-frame, iframe[title*="Netlify"], iframe[id*="nl-"]');
+          frames.forEach(function(f) { f.remove(); });
+        };
+        var observer = new MutationObserver(killBadge);
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        window.addEventListener('DOMContentLoaded', killBadge);
+        window.addEventListener('load', killBadge);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
