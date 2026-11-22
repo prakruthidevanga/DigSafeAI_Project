@@ -1,27 +1,20 @@
 <div align="center">
 
-# 🛡️ DigSafeAI
+<p align="center">
+  <img src="docs/images/digsafe-banner-official.png" alt="DigSafeAI Official Platform Banner" width="700" style="border-radius: 12px; box-shadow: 0 8px 32px rgba(10, 17, 40, 0.2);" />
+</p>
+
+# <img src="docs/images/digsafe-shield-logo.png" alt="DigSafeAI Shield" width="36" height="36" style="vertical-align: middle; margin-right: 8px;" /> DigSafeAI
 
 ### **Intelligent Underground Infrastructure Safety & Autonomous Subsurface Risk Screening**
 *Real-Time Municipal GIS Proximity • Deep Learning Vision Inspection • 6-Channel Telemetry Consensus*
 
 [![Live Production Site](https://img.shields.io/badge/Live%20Application-digsafeai.netlify.app-10B981?style=for-the-badge&logo=netlify&logoColor=white)](https://digsafeai.netlify.app)
-[![API Status](https://img.shields.io/badge/API%20Engine-Render%20Cloud-000000?style=for-the-badge&logo=render&logoColor=white)](https://digsafeai-project.onrender.com/health)
-[![Database](https://img.shields.io/badge/Cloud%20Database-MongoDB%20Atlas%20(232K+)-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
+[![API Engine](https://img.shields.io/badge/API%20Engine-Render%20Cloud-000000?style=for-the-badge&logo=render&logoColor=white)](https://digsafeai-project.onrender.com/health)
+[![Cloud Database](https://img.shields.io/badge/Cloud%20Database-MongoDB%20Atlas%20(232K+)-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
 [![AI / Computer Vision](https://img.shields.io/badge/Vision%20AI-PyTorch%20%7C%20Faster%20R--CNN-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Machine Learning](https://img.shields.io/badge/ML%20Consensus-RF%20%7C%20XGBoost%20%7C%20LightGBM-FF9900?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
 [![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite%20%2B%20Leaflet-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-
-<br/>
-
-```
-  ____  _       ____        __       _    ___ 
- |  _ \(_) __ _/ ___|  __ _/ _| ___ / \  |_ _|
- | | | | |/ _` \___ \ / _` | |_ / _ \ / _ \  | | 
- | |_| | | (_| |___) | (_| |  _|  __// ___ \ | | 
- |____/|_|\__, |____/ \__,_|_|  \___/_/   \_\___|
-          |___/                                  
-```
 
 <p align="center">
   <b>DigSafeAI</b> is an enterprise-grade civil engineering decision-support platform engineered for <b>Namma Bengaluru</b> to prevent catastrophic subsurface utility strikes during roadway, metro, and urban trench excavations.
@@ -193,6 +186,10 @@ DigSafeAI strictly combines **3 distinct operational inputs** to calculate the t
 
 ```
 DigSafeAI_Project/
+├── docs/
+│   └── images/
+│       ├── digsafe-banner-official.png Official login & platform banner
+│       └── digsafe-shield-logo.png     Official emerald & navy shield logo
 ├── backend/
 │   ├── lib/
 │   │   ├── config.js                 Runtime environment validation
@@ -213,7 +210,9 @@ DigSafeAI_Project/
 │   └── server.js                     Express entry point with CORS & rate-limiting
 ├── frontend/
 │   ├── public/
-│   │   └── samples/                  Reference excavation imagery
+│   │   ├── digsafe-banner-official.png Official high-res login banner
+│   │   ├── digsafe-shield-logo.png     Official vector shield logo
+│   │   └── samples/                    Reference excavation imagery
 │   ├── src/
 │   │   ├── components/               Navbar, Sidebar, Logo components
 │   │   ├── pages/
