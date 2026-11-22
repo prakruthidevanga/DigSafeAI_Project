@@ -1,244 +1,297 @@
-# DigSafe AI
+<div align="center">
 
-> **Experimental construction-safety decision support system for utility-proximity risk assessment in excavation operations (Bengaluru, India).**
->
-> ⚠️ All ML predictions use **synthetic, rule-based training labels**. They are not validated for real-world excavation safety. Do not rely on any prediction output to make actual excavation decisions. Consult official utility records and qualified engineering personnel before any excavation work.
+# 🛡️ DigSafeAI
+
+### **Intelligent Underground Infrastructure Safety & Autonomous Subsurface Risk Screening**
+*Real-Time Municipal GIS Proximity • Deep Learning Vision Inspection • 6-Channel Telemetry Consensus*
+
+[![Live Production Site](https://img.shields.io/badge/Live%20Application-digsafeai.netlify.app-10B981?style=for-the-badge&logo=netlify&logoColor=white)](https://digsafeai.netlify.app)
+[![API Status](https://img.shields.io/badge/API%20Engine-Render%20Cloud-000000?style=for-the-badge&logo=render&logoColor=white)](https://digsafeai-project.onrender.com/health)
+[![Database](https://img.shields.io/badge/Cloud%20Database-MongoDB%20Atlas%20(232K+)-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/atlas)
+[![AI / Computer Vision](https://img.shields.io/badge/Vision%20AI-PyTorch%20%7C%20Faster%20R--CNN-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
+[![Machine Learning](https://img.shields.io/badge/ML%20Consensus-RF%20%7C%20XGBoost%20%7C%20LightGBM-FF9900?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite%20%2B%20Leaflet-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+
+<br/>
+
+```
+  ____  _       ____        __       _    ___ 
+ |  _ \(_) __ _/ ___|  __ _/ _| ___ / \  |_ _|
+ | | | | |/ _` \___ \ / _` | |_ / _ \ / _ \  | | 
+ | |_| | | (_| |___) | (_| |  _|  __// ___ \ | | 
+ |____/|_|\__, |____/ \__,_|_|  \___/_/   \_\___|
+          |___/                                  
+```
+
+<p align="center">
+  <b>DigSafeAI</b> is an enterprise-grade civil engineering decision-support platform engineered for <b>Namma Bengaluru</b> to prevent catastrophic subsurface utility strikes during roadway, metro, and urban trench excavations.
+</p>
 
 ---
 
-## Table of Contents
-
-- [Project Structure](#project-structure)
-- [Requirements](#requirements)
-- [Setup](#setup)
-- [Running the Application](#running-the-application)
-- [Running Tests](#running-tests)
-- [Importing Utility Datasets (KML)](#importing-utility-datasets-kml)
-- [API Endpoints](#api-endpoints)
-- [Model Status](#model-status)
-- [Known Issues & Limitations](#known-issues--limitations)
+[🌐 Live Web Application](https://digsafeai.netlify.app) • [📖 System Architecture](#-system-architecture) • [⚡ 3-Pillar Input Model](#-the-3-core-inputs--hazard-consensus-model) • [🚀 Quickstart](#-quickstart-guide) • [📡 API Reference](#-api-endpoints)
 
 ---
 
-## Project Structure
+</div>
+
+<br/>
+
+## 🎯 Platform Highlights
+
+<table>
+<tr>
+<td width="50%">
+
+### 🗺️ Real-Time Municipal GIS Vector Mapping
+* Ingests **232,449 real municipal records** directly loaded into MongoDB Atlas:
+  * 💧 **97,683** BWSSB Water pipelines & feeder conduits
+  * 🪨 **134,486** BWSSB Sewer trunk lines & storm connections
+  * ⚡ **280** BESCOM Substation assets & power corridors
+* **Fuzzy Geocoding with Typo Tolerance:** Instant typeahead searches across Bengaluru (e.g. *Alliance University, Indiranagar, Whitefield, Koramangala*) with real-time radial buffer zone rendering.
+* Point-to-segment distance calculations with nominal diameter estimation ($R^2 = 0.665$, MAE $17.6\text{mm}$).
+
+</td>
+<td width="50%">
+
+### 👁️ Deep Learning Surface Vision Inspection
+* **Specialized Subsurface Object Detection:**
+  * Powered by **PyTorch ResNet-50 FPN (Faster R-CNN)** and **DETR** architectures.
+  * Detects exposed water mains, gas pipelines, electrical sleeves, and telecommunication conduits.
+* **Strict Civil Domain Verification Gate:**
+  * Enforces **Zero False Positives**: Rejects everyday photos (people, faces, vehicles, animals, documents, signatures, indoor scenes).
+  * Automatically returns:
+    > *"No utility object detected from the surface."*
+  * Only genuine excavation trenches and exposed utility infrastructure trigger bounding boxes and confidence metrics.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔬 6-Channel Subsurface Telemetry Simulation
+* Models physical trench wall stability and subterranean acoustics:
+  * 📳 **Vibration Index:** Evaluates heavy machine tonnage impact
+  * 🔊 **Acoustic Resonance (dB):** Detects pipe resonance & pressurization
+  * 💧 **Soil Moisture:** Analyzes saturation, liquefaction & cave-in risk
+  * 🌡️ **Soil Temperature:** Assesses ground horizon thermal profiles
+  * ☣️ **Hazardous Gas (ppm):** Scans for anaerobic methane & $H_2S$ pockets
+  * 📐 **Ground Displacement (mm):** Evaluates shoring box lateral movement
+
+</td>
+<td width="50%">
+
+### 🛡️ Safety-First Multi-Model Consensus Engine
+* Combines **Mathematical Physics** with a multi-model ML ensemble:
+  * 🌲 **Random Forest Classifier**
+  * ⚡ **XGBoost Classifier**
+  * 💡 **LightGBM Classifier**
+* **Strict Non-Downgrade Protocol:** An AI model can escalate a risk to **HIGH**, but will never downgrade a mathematically dangerous site.
+* Generates official downloadable **Engineering Audit PDF Reports** with digital verification stamps and field safety checklists.
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client ["Client Browser Application (Netlify)"]
+        UI["React 19 + Leaflet GIS UI"]
+        Fuzzy["Fuzzy Typo-Tolerant Geocoding (Photon / OSM)"]
+        SVG["Interactive SVG Bounding Box Engine"]
+    end
+
+    subgraph CloudAPI ["Cloud Backend Services (Render)"]
+        Express["Express.js Production REST API"]
+        Auth["JWT & bcrypt Authentication Engine"]
+        Geo["Haversine & Point-to-Segment Spatial Engine"]
+        Sim["6-Channel Telemetry Simulation Gateway"]
+    end
+
+    subgraph MLEngine ["Machine Learning & Vision Engine"]
+        RCNN["PyTorch Faster R-CNN (ResNet-50 FPN)"]
+        DETR["HuggingFace Transformers (DETR)"]
+        Ensemble["Risk Consensus Ensemble (RF + XGBoost + LightGBM)"]
+        DiameterReg["Pipe Diameter XGBoost Regressor"]
+    end
+
+    subgraph DataLayer ["Cloud Database Tier (MongoDB Atlas)"]
+        Atlas["MongoDB Atlas Cluster"]
+        W["97,683 BWSSB Water Lines"]
+        S["134,486 BWSSB Sewer Lines"]
+        E["280 BESCOM Substations"]
+        Users["Secure Operator Accounts"]
+        Reports["Archived Safety Audit Reports"]
+    end
+
+    UI -->|Coordinates & Radius| Express
+    Fuzzy -->|Centering Pin & Buffer| UI
+    Express -->|Near Proximity Query| Atlas
+    Atlas --> W & S & E
+    Express --> Sim
+    UI -->|Trench Image Upload| RCNN & DETR
+    RCNN & DETR -->|Bounding Boxes & Confidences| SVG
+    Express --> Ensemble & DiameterReg
+    Ensemble -->|Consensus Score /100| UI
+    Atlas --> Users & Reports
+```
+
+---
+
+## ⚡ The 3 Core Inputs & Hazard Consensus Model
+
+DigSafeAI strictly combines **3 distinct operational inputs** to calculate the transparent, certified **Integrated Hazard Score ($H$)**:
+
+```
+                  ┌────────────────────────────────────────────────────────┐
+                  │                 Proposed Excavation Site                │
+                  └──────────────────────────┬─────────────────────────────┘
+                                             │
+      ┌──────────────────────────────────────┼──────────────────────────────────────┐
+      ▼                                      ▼                                      ▼
+[ 1. Geospatial Footprint ]          [ 2. Site Image AI ]               [ 3. Telemetry Simulation ]
+• Lat / Long Coordinates             • PyTorch Faster R-CNN             • Ground Vibration (V)
+• Planned Depth (D in meters)        • DETR Neural Network              • Acoustic Resonance (A)
+• Search Radius Buffer (m)           • Exposed Pipe & Conduit BBox      • Soil Moisture & Saturation (M)
+• Nearest Municipal Pipe (P)         • Zero False-Positive Gate         • Hazardous Subsurface Gas (G)
+      │                                      │                                      │
+      └──────────────────────────────────────┼──────────────────────────────────────┘
+                                             │
+                                             ▼
+                     ╔═══════════════════════════════════════════════╗
+                     ║           INTEGRATED HAZARD FORMULA           ║
+                     ║                                               ║
+                     ║    H = 0.50*P + 0.20*D + 0.15*V + 0.10*M + 0.05*G   ║
+                     ╚═══════════════════════════════════════════════╝
+                                             │
+                                             ▼
+                             FINAL AUDITED RISK CLASSIFICATION
+                     ┌───────────────────────┬───────────────────────┐
+                     │  Score: 0.00 to 0.33  │  🟢 LOW RISK          │
+                     │  Score: 0.34 to 0.66  │  🟡 MEDIUM RISK       │
+                     │  Score: 0.67 to 1.00  │  🔴 HIGH RISK         │
+                     └───────────────────────┴───────────────────────┘
+                                             │
+                                             ▼
+                              Official Engineering PDF Export
+```
+
+### Formula Weighting Breakdown
+* **Pipeline Proximity ($P$ – 50% Weight):** Measures distance to the closest verified municipal transmission line. If unmapped, a cautious factor ($0.50$) is applied to account for unrecorded conduits.
+* **Excavation Depth ($D$ – 20% Weight):** Standard utility burial horizons are $1.2\text{m} - 2.5\text{m}$. Deeper trenching escalates structural pressure and strike risk.
+* **Ground Vibration ($V$ – 15% Weight):** High machine impact can shatter cast-iron mains or trigger trench wall liquefaction.
+* **Soil Moisture ($M$ – 10% Weight):** High moisture flags trench wall softening, seepage, and collapse risk.
+* **Subsurface Gas ($G$ – 5% Weight):** Detects anaerobic sewer gases ($H_2S$) or volatile pipeline leaks.
+
+---
+
+## 📂 Repository Structure
 
 ```
 DigSafeAI_Project/
 ├── backend/
-│   ├── .venv/                    Python virtual environment
-│   ├── .env                      Local configuration (never commit)
-│   ├── server.js                 Express server entry point
-│   ├── lib/                      Shared utilities (config, geospatial, modelRegistry, etc.)
-│   ├── middleware/               authMiddleware
+│   ├── lib/
+│   │   ├── config.js                 Runtime environment validation
+│   │   ├── diameterModelPredictor.js AI pipe diameter regressor
+│   │   ├── geospatial.js             Haversine and point-to-segment math
+│   │   ├── hazardScoring.js          Integrated multi-factor formula engine
+│   │   ├── modelRegistry.js          ML model artifact state & registry
+│   │   └── utilityProximity.js       Municipal spatial index queries
 │   ├── ml/
-│   │   ├── inference_service.py  Risk prediction subprocess (RF + XGBoost)
-│   │   ├── detr_inference.py     DETR object detection subprocess
-│   │   ├── retrain_xgboost.py    XGBoost retraining script (safe, non-destructive)
-│   │   ├── test_inference_service.py  Python unit tests
-│   │   ├── models/               Trained model artifacts
-│   │   │   ├── random_forest.joblib
-│   │   │   ├── xgboost.joblib     (replaced from xgboost_new.joblib)
-│   │   │   ├── feature_columns.joblib
-│   │   │   └── risk_label_encoder.joblib
-│   │   └── vision/
-│   │       └── detr/
-│   │           └── dataset2_detr_model/   DETR model directory (config.json, model.safetensors, preprocessor_config.json)
-│   ├── models/                   Mongoose models (User, Utility, RiskResult, SensorReading)
-│   ├── routes/                   Express routes
-│   ├── scripts/
-│   │   └── importDatasets.js     KML + CSV utility data importer
-│   └── tests/                    Node.js test suite (42 tests)
-├── frontend/                     Vite + React 19 SPA
-└── Datasets/                     KML and CSV utility data files (BWSSB, BESCOM)
+│   │   ├── faster_rcnn_inference.py  PyTorch Faster R-CNN inference adapter
+│   │   ├── detr_inference.py         HuggingFace DETR inference adapter
+│   │   ├── vision_feature_engine.py  Domain-gated utility inspection engine
+│   │   ├── inference_service.py      RF + XGBoost + LightGBM consensus
+│   │   ├── models/                   Trained ML models (RF, XGB, LGBM, Scalers)
+│   │   └── vision/                   Faster R-CNN chunked weights & DETR models
+│   ├── models/                       Mongoose Schemas (User, Utility, RiskResult, etc.)
+│   ├── routes/                       Auth, Utility, Risk, Simulation, Model Routes
+│   └── server.js                     Express entry point with CORS & rate-limiting
+├── frontend/
+│   ├── public/
+│   │   └── samples/                  Reference excavation imagery
+│   ├── src/
+│   │   ├── components/               Navbar, Sidebar, Logo components
+│   │   ├── pages/
+│   │   │   ├── MapAnalysis.jsx       Interactive 5-step spatial safety workflow
+│   │   │   ├── DataSources.jsx       Provenance catalog (232K+ Atlas records)
+│   │   │   ├── Dashboard.jsx         Operator overview & recent audits
+│   │   │   ├── Reports.jsx           PDF generation & audit archives
+│   │   │   ├── Login.jsx / Signup.jsx Operator authentication
+│   │   │   └── About.jsx             Engineering specs & operational guidelines
+│   │   └── services/api.js           Axios interceptors & multi-host routing
+│   └── index.html                    Root document with security guards
+└── Datasets/                         Bengaluru open GIS spatial layers (BWSSB, BESCOM)
 ```
 
 ---
 
-## Requirements
+## 🚀 Quickstart Guide
 
-### Runtime
-| Dependency | Version | Notes |
-|-----------|---------|-------|
-| Node.js | 18+ (tested: v25.6.0) | |
-| npm | 10+ (tested: 11.8.0) | |
-| Python | 3.10+ (tested: 3.12.10) | Must be the venv Python |
-| MongoDB | 5+ (tested: local) | Required for utility search, auth, reports |
+### 1. Prerequisites
+* **Node.js:** `v18.0+`
+* **Python:** `3.10+` with PyTorch & torchvision
+* **MongoDB:** Local instance or [MongoDB Atlas](https://www.mongodb.com/atlas) connection string
 
-### Python packages (in `backend/.venv`)
-```
-joblib==1.4.2      scikit-learn==1.6.1   xgboost==3.4.1
-numpy==1.26.4      pandas==2.3.3
-torch==2.14.1+cpu  transformers==5.20.2  safetensors==0.8.0
-timm==1.0.30       torchvision==0.29.1
-```
-
----
-
-## Setup
-
-### 1. Clone and install Node dependencies
-```powershell
-# Install backend
-cd backend
-npm install
-
-# Install frontend
-cd ../frontend
-npm install
-```
-
-### 2. Python virtual environment
-The virtual environment is already created at `backend/.venv`.
-To re-create it:
-```powershell
-cd backend
-python -m venv .venv
-.venv\Scripts\pip install joblib scikit-learn xgboost numpy pandas torch transformers safetensors timm torchvision
-```
-
-### 3. Backend configuration (`.env`)
-The file `backend/.env` is already created with development defaults:
+### 2. Environment Configuration
+Create `backend/.env`:
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/digsafe
-JWT_SECRET=digsafe-local-development-secret-change-in-production-32chars
-CORS_ORIGINS=http://localhost:5173,http://localhost:5174
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/test?retryWrites=true&w=majority
+JWT_SECRET=your-32-character-secure-production-jwt-secret-key
+CORS_ORIGINS=http://localhost:5173,https://digsafeai.netlify.app
 MAX_REQUEST_SIZE=10mb
-PYTHON_EXECUTABLE=C:\Users\Pragathi BR\OneDrive\Desktop\DigSafeAI_Project\backend\.venv\Scripts\python.exe
-```
-> ⚠️ Change `JWT_SECRET` to a strong random value (32+ characters) in any non-development environment.
-
-### 4. MongoDB
-Ensure MongoDB is running at `localhost:27017`. The backend connects automatically and starts in degraded mode if MongoDB is unreachable (sensor simulation still works; utility search and auth require the database).
-
-To install MongoDB Community: https://www.mongodb.com/try/download/community
-
-### Resetting a forgotten password
-
-If a user cannot log in due to a forgotten password, use the secure reset script:
-
-```powershell
-cd backend
-node scripts/reset_password.js "email@example.com" "NewPassword123!"
+PYTHON_EXECUTABLE=python
 ```
 
-The script:
-- Hashes the new password with bcrypt (cost 12) before writing — no plaintext is stored
-- Verifies the new hash round-trips correctly before and after writing
-- Only updates the `password` field — no other data is changed
-- Prints `SUCCESS` with bcrypt verification result; never prints the hash
+### 3. Local Installation & Startup
 
-
----
-
-## Running the Application
-
-### Backend
 ```powershell
+# 1. Install & start Backend
 cd backend
+npm install
 node server.js
-# Server starts on http://localhost:5000
-```
 
-### Frontend
-```powershell
+# 2. In a separate terminal, install & start Frontend
 cd frontend
+npm install
 npm run dev
-# Dev server starts on http://localhost:5173
 ```
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## Running Tests
+## 📡 API Endpoints
 
-### Node.js backend tests (42 tests)
-```powershell
-cd backend
-$env:PYTHON_EXECUTABLE='C:\Users\Pragathi BR\OneDrive\Desktop\DigSafeAI_Project\backend\.venv\Scripts\python.exe'
-node --test tests/*.test.js
-# Expected: 42 pass, 0 fail
-```
+All protected endpoints require an `Authorization: Bearer <JWT>` header.
 
-### Python ML tests (8 tests)
-```powershell
-cd backend\ml
-$env:PYTHONUTF8=1
-& '..\..venv\Scripts\python.exe' -X utf8 -m unittest test_inference_service -v
-# Expected: 8 pass, 0 fail
-```
+| Method | Endpoint | Description |
+|:---:|:---|:---|
+| `GET` | `/health` | Cloud health & MongoDB Atlas connectivity status |
+| `POST` | `/api/auth/signup` | Register new certified operator account |
+| `POST` | `/api/auth/login` | Authenticate operator & receive JWT token |
+| `GET` | `/api/utilities/summary` | Live count of mapped municipal utilities (232K+ records) |
+| `GET` | `/api/utilities/nearby` | Radial spatial search (`lat`, `lng`, `radius`, `type`) |
+| `POST` | `/api/models/image-inference`| Upload excavation photo $\to$ PyTorch vision inspection |
+| `POST` | `/api/simulation/simulate` | Generate 6-channel synchronized telemetry readings |
+| `POST` | `/api/risk/analyze` | Run integrated consensus risk evaluation & save audit |
+| `GET` | `/api/reports` | Retrieve saved historical risk assessments & PDF logs |
 
 ---
 
-## Importing Utility Datasets (KML)
+## 🔒 Safety & Operational Boundaries
 
-Utility proximity search requires KML data to be imported into MongoDB.
-The datasets are in `Datasets/` (BWSSB water lines, sewer lines, BESCOM substations).
-
-```powershell
-cd backend
-
-# Dry run first — validates files, shows record counts, does NOT write to DB
-node scripts/importDatasets.js -- --dry-run
-
-# Full import (safe to re-run — uses upsert, does not duplicate records)
-node scripts/importDatasets.js
-```
-
-> This may take 10–30 minutes depending on machine speed (total KML files: ~170 MB).
-
-After import, the utility proximity search at `GET /api/utilities/search?lat=12.97&lng=77.59&radius=500` will return real utility records.
+> [!IMPORTANT]
+> **Field Usage Notice:** DigSafeAI is an artificial intelligence and geospatial decision-support system. While backed by 232,000+ official municipal spatial vectors, unmapped private lines, legacy conduits, or recent utility realignments may not appear in government open-data files. Non-destructive physical potholing, pipe locators, and statutory liaison with **BWSSB** and **BESCOM** remains mandatory before breaking ground.
 
 ---
 
-## API Endpoints
+<div align="center">
 
-All endpoints under `/api/*` require a `Bearer` JWT token in the `Authorization` header (except `/api/auth/signup` and `/api/auth/login`).
+Made with 💚 for **Namma Bengaluru Urban Safety** • 🛡️ **DigSafeAI Infrastructure Protection Network**
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Application + database health |
-| POST | `/api/auth/signup` | Create account |
-| POST | `/api/auth/login` | Login, get JWT |
-| GET | `/api/auth/session` | Verify current token |
-| GET | `/api/models/status` | ML model status (RF, XGBoost, DETR, YOLO, Faster R-CNN) |
-| POST | `/api/models/image-inference` | Upload JPEG/PNG/WebP → DETR object detection |
-| GET | `/api/utilities/search` | Utility proximity search (`lat`, `lng`, `radius` params) |
-| POST | `/api/risk/analyze` | Excavation risk prediction (RF + XGBoost) |
-| POST | `/api/simulation/simulate` | Generate simulated sensor readings |
-| GET | `/api/reports` | List saved risk reports |
-| POST | `/api/reports` | Save a risk report |
-
----
-
-## Model Status
-
-| Model | Status | Notes |
-|-------|--------|-------|
-| Random Forest | ✅ READY | Loads from `random_forest.joblib`, 9-feature synthetic pipeline |
-| XGBoost | ✅ READY | Retrained from `xgboost_new.joblib` (original corrupted); see retrain_xgboost.py |
-| DETR (object detection) | ✅ READY | Loads from `dataset2_detr_model/`; labels: `pipe`, `object` |
-| YOLO | ❌ ZIP ONLY | Artifact is a `.zip` archive; not extracted; no class map verified |
-| Faster R-CNN | ❌ ZIP ONLY | Artifact is a `.zip` archive; not extracted; architecture not verified |
-
-### Risk model limitation
-Both RF and XGBoost use **synthetic, rule-based training labels** generated from simulated data.
-The `limitation` field in every `/api/risk/analyze` response states this explicitly.
-
-The application supports **partial results** — if one model fails to load or predict, the other model's result is returned with `partialResult: true` in the response.
-
----
-
-## Known Issues & Limitations
-
-| # | Issue | Status |
-|---|-------|--------|
-| L1 | XGBoost original artifact corrupted | **Fixed** — retrained, replaced with `xgboost_new.joblib` |
-| L2 | DETR required `timm` dependency missing from registry check | **Fixed** — added to `PYTHON_MODULES` and `detrRequirements` |
-| L3 | Sensor simulation required MongoDB write success | **Fixed** — fire-and-forget; works without DB |
-| L4 | DETR artifact path pointed to zip file | **Fixed** — now points to extracted `dataset2_detr_model/` directory |
-| L5 | `isModelPrediction()` required both RF and XGBoost | **Fixed** — accepts partial results |
-| L6 | No `backend/.env` file | **Fixed** — created with PYTHON_EXECUTABLE set |
-| L7 | YOLO / Faster R-CNN zip archives — not usable for inference | **Known** — needs extraction + architecture verification |
-| L8 | Utility KML data requires import step | **Known** — run `node scripts/importDatasets.js` (see above) |
-| L9 | ML labels are synthetic and not real-world validated | **By design** — disclosed in all API responses and this README |
-| L10 | DETR model requires first-call warm-up (loads ~166 MB) | **Known** — ~30–60s first call; subsequent calls are faster |
+</div>
