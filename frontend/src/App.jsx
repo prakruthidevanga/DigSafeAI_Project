@@ -52,6 +52,17 @@ function App() {
   const [authStatus, setAuthStatus] = useState('checking');
   const [isAppLoaded, setIsAppLoaded] = useState(false);
 
+  // Pre-warm backend immediately on frontend load to wake Render instance if asleep
+  useEffect(() => {
+    const pingBackend = () => {
+      fetch('https://digsafeai-project.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
+    };
+    pingBackend();
+    // Keep alive every 8 minutes while user has tab open to prevent Render 15-minute sleep
+    const keepAliveTimer = setInterval(pingBackend, 8 * 60 * 1000);
+    return () => clearInterval(keepAliveTimer);
+  }, []);
+
   useEffect(() => {
     let active = true;
     const handleUnauthorized = () => setAuthStatus('unauthenticated');

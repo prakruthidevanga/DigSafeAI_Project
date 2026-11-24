@@ -70,7 +70,12 @@ function detrModelReady(modelDir) {
   );
 }
 
-function inspectPythonDependencies() {
+let cachedPythonDependencies = null;
+
+function inspectPythonDependencies(forceRefresh = false) {
+  if (!forceRefresh && cachedPythonDependencies) {
+    return cachedPythonDependencies;
+  }
   const binary = process.env.PYTHON_EXECUTABLE || 'python';
   const script = [
     'import importlib.metadata, importlib.util, json',
@@ -83,28 +88,32 @@ function inspectPythonDependencies() {
   const result = spawnSync(binary, ['-c', script], { encoding: 'utf8', timeout: 5000 });
 
   if (result.error) {
-    return { available: false, binary, modules: {}, error: result.error.message };
+    cachedPythonDependencies = { available: false, binary, modules: {}, error: result.error.message };
+    return cachedPythonDependencies;
   }
   if (result.status !== 0) {
-    return {
+    cachedPythonDependencies = {
       available: false,
       binary,
       modules: {},
       error: (result.stderr || 'Python dependency inspection failed.').trim(),
     };
+    return cachedPythonDependencies;
   }
 
   try {
     const inspection = JSON.parse(result.stdout.trim());
-    return {
+    cachedPythonDependencies = {
       available: true,
       binary,
       modules: inspection.modules,
       versions: inspection.versions,
       error: null,
     };
+    return cachedPythonDependencies;
   } catch (error) {
-    return { available: false, binary, modules: {}, error: 'Python dependency inspection returned invalid output.' };
+    cachedPythonDependencies = { available: false, binary, modules: {}, error: 'Python dependency inspection returned invalid output.' };
+    return cachedPythonDependencies;
   }
 }
 
@@ -140,7 +149,17 @@ function createImageModelStatus({ artifact, present, dependencies, supportedTask
   };
 }
 
-function getModelStatus({ dependencyStatus = inspectPythonDependencies() } = {}) {
+let cachedModelStatus = null;
+let lastModelStatusTime = 0;
+const MODEL_STATUS_TTL = 30 * 1000; // 30 seconds
+
+function getModelStatus(options = {}) {
+  const hasCustomInput = Boolean(options && (options.dependencyStatus !== undefined || options.forceRefresh));
+  const now = Date.now();
+  if (!hasCustomInput && cachedModelStatus && (now - lastModelStatusTime < MODEL_STATUS_TTL)) {
+    return cachedModelStatus;
+  }
+  const dependencyStatus = options.dependencyStatus || inspectPythonDependencies(options.forceRefresh);
   const riskArtifacts = [
     MODEL_ARTIFACTS.riskRandomForest,
     MODEL_ARTIFACTS.riskXgboost,
@@ -171,7 +190,7 @@ function getModelStatus({ dependencyStatus = inspectPythonDependencies() } = {})
   const detrPresent = detrModelReady(MODEL_ARTIFACTS.detr);
   const detrRequirements = ['torch', 'transformers', 'safetensors', 'timm'];
 
-  return {
+  const result = {
     generatedAt: new Date().toISOString(),
     excavationRisk: {
       status: !riskArtifactsPresent
@@ -265,6 +284,12 @@ function getModelStatus({ dependencyStatus = inspectPythonDependencies() } = {})
       error: dependencyStatus.error,
     },
   };
+
+  if (!hasCustomInput) {
+    cachedModelStatus = result;
+    lastModelStatusTime = now;
+  }
+  return result;
 }
 
 module.exports = {

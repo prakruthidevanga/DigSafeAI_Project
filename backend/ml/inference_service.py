@@ -452,7 +452,30 @@ def predict(payload, loaded_models=None):
     return result
 
 
+def run_daemon():
+    try:
+        models = load_models()
+        print(json.dumps({"status": "READY"}), flush=True)
+    except Exception as error:
+        print(json.dumps({"status": "INFERENCE_UNAVAILABLE", "message": f"Failed to load models: {error}"}), flush=True)
+        return 1
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+            result = predict(payload, loaded_models=models)
+            print(json.dumps({"status": "PREDICTION_AVAILABLE", "riskPrediction": result}, allow_nan=False), flush=True)
+        except Exception as error:
+            print(json.dumps({"status": "INFERENCE_UNAVAILABLE", "message": str(error)}), flush=True)
+    return 0
+
+
 def main():
+    if "--daemon" in sys.argv:
+        return run_daemon()
     try:
         payload = json.load(sys.stdin)
         result = predict(payload)

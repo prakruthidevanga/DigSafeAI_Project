@@ -1,11 +1,18 @@
 const test = require('node:test');
+const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { once } = require('node:events');
 const { JWT_SECRET } = require('../middleware/authMiddleware');
-const { predictRisk } = require('../lib/riskModelPredictor');
+const { predictRisk, stopRiskDaemon } = require('../lib/riskModelPredictor');
 const { createRiskRouter } = require('../routes/riskRoutes');
+
+after(() => {
+  if (typeof stopRiskDaemon === 'function') {
+    stopRiskDaemon();
+  }
+});
 
 const validInput = {
   location: 'Whitefield',

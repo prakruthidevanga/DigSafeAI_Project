@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 import { saveSession } from '../services/session';
@@ -12,18 +12,32 @@ function Login({ setAuth }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isWakingServer, setIsWakingServer] = useState(false);
   const navigate = useNavigate();
+
+  // Pre-warm backend when Login screen mounts so container is ready when user clicks Sign In
+  useEffect(() => {
+    fetch('https://digsafeai-project.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setIsWakingServer(false);
     setError('');
+
+    const wakeTimer = setTimeout(() => {
+      setIsWakingServer(true);
+    }, 2200);
+
     try {
       const response = await API.post('/auth/login', { email: email.trim(), password });
+      clearTimeout(wakeTimer);
       saveSession(response.data, rememberMe);
       setAuth('authenticated');
       navigate('/dashboard');
     } catch (err) {
+      clearTimeout(wakeTimer);
       if (err.response) {
         // Backend responded with an HTTP status code (400, 401, 500, etc.)
         setError(err.response.data?.message || 'Invalid credentials. Please verify your email and password.');
@@ -34,7 +48,9 @@ function Login({ setAuth }) {
         setError(err.message || 'Authentication error. Please try again.');
       }
     } finally {
+      clearTimeout(wakeTimer);
       setLoading(false);
+      setIsWakingServer(false);
     }
   };
 
@@ -244,6 +260,25 @@ function Login({ setAuth }) {
               {loading ? 'Authenticating...' : 'Sign In to Workspace'}
               {!loading && <ArrowRight size={18} />}
             </button>
+
+            {isWakingServer && (
+              <div style={{
+                marginTop: '14px',
+                padding: '10px 14px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                color: '#15803d',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                lineHeight: 1.4
+              }}>
+                <span style={{ fontSize: '1rem' }}>⚡</span>
+                <span>Connecting to cloud security server (waking container)... Ready in a moment!</span>
+              </div>
+            )}
           </form>
 
           <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>

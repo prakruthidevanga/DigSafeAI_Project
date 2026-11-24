@@ -56,4 +56,7 @@ const riskResultSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+riskResultSchema.index({ userId: 1, createdAt: -1 });
+riskResultSchema.index({ userId: 1, riskLevel: 1 });
+
 module.exports = mongoose.model('RiskResult', riskResultSchema);

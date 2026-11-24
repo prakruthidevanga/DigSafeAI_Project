@@ -48,7 +48,7 @@ export function AppLoadingScreen({ onFinished, customMessage }) {
 
         return nextVal;
       });
-    }, 38); // ~2.2 seconds total smooth experience
+    }, 12); // ~0.7 seconds fast, responsive experience
 
     return () => clearInterval(interval);
   }, [onFinished]);

@@ -74,10 +74,12 @@ function createApp(config = getRuntimeConfig(), mongoConnection = mongoose.conne
   });
   app.use('/api', apiLimiter);
 
-  app.get('/health', (req, res) => {
+  const healthHandler = (req, res) => {
     const health = getHealthStatus(mongoConnection.readyState);
     return res.status(health.status === 'ok' ? 200 : 503).json(health);
-  });
+  };
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
 
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/utilities', require('./routes/utilityRoutes'));
@@ -108,6 +110,17 @@ async function startServer(config = getRuntimeConfig(), connect = (...args) => m
   const server = app.listen(config.port, () => {
     console.log(`DigSafe AI server running on port ${config.port}${mongoose.connection.readyState === 1 ? '' : ' in degraded mode'}`);
   });
+
+  // Pre-warm machine learning worker processes in background so first user inference is instant (<100ms)
+  try {
+    const { startRiskDaemon } = require('./lib/riskModelPredictor');
+    const { startDiameterDaemon } = require('./lib/diameterModelPredictor');
+    startRiskDaemon().catch(() => {});
+    startDiameterDaemon().catch(() => {});
+  } catch (workerErr) {
+    console.warn('Worker pre-warming error:', workerErr.message);
+  }
+
   return server;
 }
 

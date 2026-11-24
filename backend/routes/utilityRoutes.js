@@ -37,6 +37,25 @@ function getUtilityDistanceMeters(utility, point) {
   return null;
 }
 
+let summaryCache = null;
+let summaryCacheExpiry = 0;
+const SUMMARY_CACHE_TTL_MS = 15 * 60 * 1000; // 15-minute in-memory cache
+
+let isKmlDatasetAvailableCache = null;
+let kmlAvailabilityExpiry = 0;
+const KML_CHECK_TTL_MS = 10 * 60 * 1000; // 10-minute check cache
+
+async function checkKmlDatasetAvailable(sourceQuery) {
+  const now = Date.now();
+  if (isKmlDatasetAvailableCache !== null && now < kmlAvailabilityExpiry) {
+    return isKmlDatasetAvailableCache;
+  }
+  const count = await Utility.countDocuments(sourceQuery);
+  isKmlDatasetAvailableCache = count > 0;
+  kmlAvailabilityExpiry = now + KML_CHECK_TTL_MS;
+  return isKmlDatasetAvailableCache;
+}
+
 function isUtilityTypeAllowed(utilityType, allowedList) {
   if (!allowedList || allowedList.length === 0) return true;
   return allowedList.includes(utilityType); 
@@ -44,6 +63,11 @@ function isUtilityTypeAllowed(utilityType, allowedList) {
 
 router.get('/summary', async (req, res) => {
   try {
+    const now = Date.now();
+    if (summaryCache && now < summaryCacheExpiry) {
+      return res.json(summaryCache);
+    }
+
     const groups = await Utility.aggregate([
       {
         $group: {
@@ -65,7 +89,10 @@ router.get('/summary', async (req, res) => {
         },
       },
     ]);
-    return res.json({ groups });
+    const responsePayload = { groups };
+    summaryCache = responsePayload;
+    summaryCacheExpiry = now + SUMMARY_CACHE_TTL_MS;
+    return res.json(responsePayload);
   } catch (error) {
     console.error('Summary query failed:', error.message);
     return res.status(500).json({ message: 'Unable to load utility summary.' });
@@ -184,8 +211,8 @@ router.get('/proximity', async (req, res) => {
     }
     const { point, radius } = search;
     const sourceQuery = { dataSource: KML_UTILITY_SOURCE, utilityType: { $in: KML_PIPELINE_TYPES } };
-    const availableRecords = await Utility.countDocuments(sourceQuery);
-    if (availableRecords === 0) {
+    const hasDataset = await checkKmlDatasetAvailable(sourceQuery);
+    if (!hasDataset) {
       return res.json({
         status: 'DATASET_NOT_IMPORTED',
         source: KML_UTILITY_SOURCE,

@@ -92,7 +92,122 @@ def calculate_utm_span(start_lon, start_lat, end_lon, end_lat):
         return round(2 * r * math.asin(math.sqrt(a)), 2)
 
 
+def process_features(items, pipeline):
+    import pandas as pd
+    rows = []
+    valid_indices = []
+
+    for idx, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+
+        # Extract or compute coordinates
+        start_lon = parse_finite_number(item.get("start_lon"), "start_lon")
+        start_lat = parse_finite_number(item.get("start_lat"), "start_lat")
+        end_lon = parse_finite_number(item.get("end_lon"), "end_lon")
+        end_lat = parse_finite_number(item.get("end_lat"), "end_lat")
+
+        # Check if geometry coordinates array provided instead
+        geometry = item.get("geometry")
+        if (start_lon is None or start_lat is None) and isinstance(geometry, dict):
+            coords = geometry.get("coordinates")
+            if isinstance(coords, list) and len(coords) > 0:
+                first = coords[0] if not isinstance(coords[0][0], list) else coords[0][0]
+                last = coords[-1] if not isinstance(coords[-1][0], list) else coords[-1][-1]
+                if len(first) >= 2 and len(last) >= 2:
+                    start_lon = parse_finite_number(first[0], "start_lon")
+                    start_lat = parse_finite_number(first[1], "start_lat")
+                    end_lon = parse_finite_number(last[0], "end_lon")
+                    end_lat = parse_finite_number(last[1], "end_lat")
+
+        if (start_lon is None or start_lat is None or 
+            end_lon is None or end_lat is None):
+            # Cannot locate utility spatially
+            continue
+
+        span_m = parse_finite_number(item.get("straight_line_span_m"), "span")
+        if span_m is None or span_m < 0:
+            span_m = calculate_utm_span(start_lon, start_lat, end_lon, end_lat)
+
+        coord_count = parse_finite_number(item.get("coordinate_count"), "coord_count")
+        if coord_count is None or coord_count < 2:
+            coord_count = 2
+
+        source_file = str(item.get("source_file") or item.get("sourceFile") or "unknown")
+        material_id = str(item.get("MaterialID") or item.get("materialId") or "unknown")
+        status = str(item.get("Status") or item.get("status") or "unknown")
+        ssid = str(item.get("SSID") or item.get("ssid") or "unknown")
+
+        rows.append({
+            "start_lon": start_lon,
+            "start_lat": start_lat,
+            "end_lon": end_lon,
+            "end_lat": end_lat,
+            "straight_line_span_m": span_m,
+            "coordinate_count": int(coord_count),
+            "source_file": source_file,
+            "MaterialID": material_id,
+            "Status": status,
+            "SSID": ssid,
+        })
+        valid_indices.append(idx)
+
+    if not rows:
+        return {
+            "status": "NO_VALID_RECORDS",
+            "message": "None of the provided utility records had valid spatial coordinates."
+        }
+
+    df = pd.DataFrame(rows, columns=ALL_COLUMNS)
+    pred_diameters = pipeline.predict(df)
+
+    results = [None] * len(items)
+    for original_idx, pred_val in zip(valid_indices, pred_diameters):
+        val_rounded = round(float(pred_val), 1)
+        results[original_idx] = {
+            "predictedDiameterMm": val_rounded,
+            "model": MODEL_NAME,
+            "maeMm": MODEL_MAE_MM,
+            "r2Score": MODEL_R2,
+            "isAiEstimated": True
+        }
+
+    return {
+        "status": "PREDICTION_AVAILABLE",
+        "predictions": results,
+        "count": len(rows),
+        "model": MODEL_NAME,
+        "maeMm": MODEL_MAE_MM,
+        "r2Score": MODEL_R2,
+        "limitation": MODEL_LIMITATION
+    }
+
+
+def run_daemon():
+    import joblib
+    if not MODEL_PATH.is_file():
+        print(json.dumps({"status": "MODEL_NOT_FOUND", "message": f"Artifact not found at {MODEL_PATH}."}), flush=True)
+        return 1
+    pipeline = joblib.load(MODEL_PATH)
+    print(json.dumps({"status": "READY"}), flush=True)
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            payload = json.loads(line)
+            items = payload.get("features", [])
+            response = process_features(items, pipeline)
+            print(json.dumps(response), flush=True)
+        except Exception as error:
+            print(json.dumps({"status": "INFERENCE_ERROR", "message": str(error)}), flush=True)
+    return 0
+
+
 def main():
+    if "--daemon" in sys.argv:
+        sys.exit(run_daemon())
     try:
         raw_input = sys.stdin.read().strip()
         if not raw_input:
@@ -126,99 +241,8 @@ def main():
             sys.exit(1)
 
         import joblib
-        import pandas as pd
-        import numpy as np
-
         pipeline = joblib.load(MODEL_PATH)
-
-        rows = []
-        valid_indices = []
-
-        for idx, item in enumerate(items):
-            if not isinstance(item, dict):
-                continue
-
-            # Extract or compute coordinates
-            start_lon = parse_finite_number(item.get("start_lon"), "start_lon")
-            start_lat = parse_finite_number(item.get("start_lat"), "start_lat")
-            end_lon = parse_finite_number(item.get("end_lon"), "end_lon")
-            end_lat = parse_finite_number(item.get("end_lat"), "end_lat")
-
-            # Check if geometry coordinates array provided instead
-            geometry = item.get("geometry")
-            if (start_lon is None or start_lat is None) and isinstance(geometry, dict):
-                coords = geometry.get("coordinates")
-                if isinstance(coords, list) and len(coords) > 0:
-                    first = coords[0] if not isinstance(coords[0][0], list) else coords[0][0]
-                    last = coords[-1] if not isinstance(coords[-1][0], list) else coords[-1][-1]
-                    if len(first) >= 2 and len(last) >= 2:
-                        start_lon = parse_finite_number(first[0], "start_lon")
-                        start_lat = parse_finite_number(first[1], "start_lat")
-                        end_lon = parse_finite_number(last[0], "end_lon")
-                        end_lat = parse_finite_number(last[1], "end_lat")
-
-            if (start_lon is None or start_lat is None or 
-                end_lon is None or end_lat is None):
-                # Cannot locate utility spatially
-                continue
-
-            span_m = parse_finite_number(item.get("straight_line_span_m"), "span")
-            if span_m is None or span_m < 0:
-                span_m = calculate_utm_span(start_lon, start_lat, end_lon, end_lat)
-
-            coord_count = parse_finite_number(item.get("coordinate_count"), "coord_count")
-            if coord_count is None or coord_count < 2:
-                coord_count = 2
-
-            source_file = str(item.get("source_file") or item.get("sourceFile") or "unknown")
-            material_id = str(item.get("MaterialID") or item.get("materialId") or "unknown")
-            status = str(item.get("Status") or item.get("status") or "unknown")
-            ssid = str(item.get("SSID") or item.get("ssid") or "unknown")
-
-            rows.append({
-                "start_lon": start_lon,
-                "start_lat": start_lat,
-                "end_lon": end_lon,
-                "end_lat": end_lat,
-                "straight_line_span_m": span_m,
-                "coordinate_count": int(coord_count),
-                "source_file": source_file,
-                "MaterialID": material_id,
-                "Status": status,
-                "SSID": ssid,
-            })
-            valid_indices.append(idx)
-
-        if not rows:
-            print(json.dumps({
-                "status": "NO_VALID_RECORDS",
-                "message": "None of the provided utility records had valid spatial coordinates."
-            }))
-            sys.exit(0)
-
-        df = pd.DataFrame(rows, columns=ALL_COLUMNS)
-        pred_diameters = pipeline.predict(df)
-
-        results = [None] * len(items)
-        for original_idx, pred_val in zip(valid_indices, pred_diameters):
-            val_rounded = round(float(pred_val), 1)
-            results[original_idx] = {
-                "predictedDiameterMm": val_rounded,
-                "model": MODEL_NAME,
-                "maeMm": MODEL_MAE_MM,
-                "r2Score": MODEL_R2,
-                "isAiEstimated": True
-            }
-
-        response = {
-            "status": "PREDICTION_AVAILABLE",
-            "predictions": results,
-            "count": len(rows),
-            "model": MODEL_NAME,
-            "maeMm": MODEL_MAE_MM,
-            "r2Score": MODEL_R2,
-            "limitation": MODEL_LIMITATION
-        }
+        response = process_features(items, pipeline)
         print(json.dumps(response))
 
     except Exception as e:
