@@ -7,6 +7,7 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { CheckCircle2, ShieldAlert, AlertTriangle, Check, X, RefreshCw } from 'lucide-react';
 
 function parseInputNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -1063,7 +1064,7 @@ function MapAnalysis() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                 <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)' }}>Underground Utility AI Inspection</strong>
                 <span className="text-muted" style={{ fontSize: '0.85rem' }}>
-                  {imageLoading ? 'Analyzing underground utility infrastructure...' : (imageInference ? 'Analysis complete' : 'Image uploaded')}
+                  {imageLoading ? 'Analyzing underground utility infrastructure...' : (imageInference ? (imageInference.accepted ? 'Pipeline Verified ✓' : 'Validation Complete') : 'Image uploaded')}
                 </span>
               </div>
 
@@ -1074,7 +1075,7 @@ function MapAnalysis() {
                     Scanning for Underground Pipelines &amp; Utility Infrastructure...
                   </div>
                   <div className="text-muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                    Evaluating visual features with trained multi-model neural network.
+                    Filtering surface clutter, checking cylindrical morphology &amp; validating excavation context.
                   </div>
                 </div>
               ) : (
@@ -1082,7 +1083,7 @@ function MapAnalysis() {
                   <img src={imagePreview} alt="Excavation site inspection preview" style={{ display: 'block', width: '100%', maxHeight: '420px', objectFit: 'contain' }} />
 
                   {/* SVG Bounding Box Overlay */}
-                  {imageInference?.imageSize?.width > 0 && imageInference?.imageSize?.height > 0 && Array.isArray(imageInference?.detections) && (
+                  {imageInference?.imageSize?.width > 0 && imageInference?.imageSize?.height > 0 && Array.isArray(imageInference?.detections) && imageInference.accepted && (
                     <svg
                       className="detection-svg-overlay"
                       viewBox={`0 0 ${imageInference.imageSize.width} ${imageInference.imageSize.height}`}
@@ -1103,11 +1104,20 @@ function MapAnalysis() {
                         const height = Math.max(0, Math.min(imgH - y, box.height));
                         if (width <= 0 || height <= 0) return null;
 
-                        const detClass = (detection.class || detection.label || 'pipe').toLowerCase();
-                        const isPipe = detClass.includes('pipe') || detClass.includes('water') || detClass.includes('conduit') || detClass.includes('gas') || detClass.includes('sewer');
-                        const boxClass = isPipe ? 'detection-box-pipe' : 'detection-box-object';
-                        const labelBgClass = isPipe ? 'detection-label-bg-pipe' : 'detection-label-bg-object';
-                        const labelText = `${detClass.toUpperCase()} ${(detection.confidence * 100).toFixed(0)}%`;
+                        const cat = (detection.category || 'WATER').toUpperCase();
+                        const boxClass = cat === 'GAS' ? 'detection-box-gas' :
+                                         cat === 'WATER' ? 'detection-box-water' :
+                                         cat === 'ELECTRICAL' ? 'detection-box-electrical' :
+                                         cat === 'SEWERAGE' ? 'detection-box-sewerage' :
+                                         cat === 'OIL' ? 'detection-box-oil' : 'detection-box-pipe';
+
+                        const labelBgClass = cat === 'GAS' ? 'detection-label-bg-gas' :
+                                             cat === 'WATER' ? 'detection-label-bg-water' :
+                                             cat === 'ELECTRICAL' ? 'detection-label-bg-electrical' :
+                                             cat === 'SEWERAGE' ? 'detection-label-bg-sewerage' :
+                                             cat === 'OIL' ? 'detection-label-bg-oil' : 'detection-label-bg-pipe';
+
+                        const labelText = `${(detection.label || cat).toUpperCase()} ${(detection.confidence * 100).toFixed(0)}%`;
                         const fontScale = Math.max(14, Math.round(imgW * 0.016));
                         const charWidth = fontScale * 0.62;
                         const badgeWidth = Math.round(labelText.length * charWidth + 16);
@@ -1130,35 +1140,89 @@ function MapAnalysis() {
                 </div>
               )}
 
-              {/* Status and Summary Badges */}
-              {!imageLoading && (
-                <div className="detection-summary-bar" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="detection-badge-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {imageInference?.status === 'DETECTIONS_AVAILABLE' && imageInference.detectionCount > 0 ? (
-                      imageInference.detections.map((d, i) => {
-                        const dClass = (d.class || d.label || 'pipe').toLowerCase();
-                        const isPipePill = dClass.includes('pipe') || dClass.includes('water') || dClass.includes('conduit') || dClass.includes('gas');
-                        return (
-                          <span key={`pill-${i}`} className={`detection-pill ${isPipePill ? 'detection-pill-pipe' : 'detection-pill-object'}`}>
-                            ● Confirmed {dClass.toUpperCase()} ({(d.confidence * 100).toFixed(1)}% match)
-                          </span>
-                        );
-                      })
-                    ) : (
-                      <span className="detection-pill detection-pill-none">
-                        No utility object detected from the surface.
-                      </span>
-                    )}
-                  </div>
+              {/* Status and Verification Banner */}
+              {!imageLoading && imageInference && (
+                <div style={{ marginTop: '14px' }}>
+                  {imageInference.accepted || imageInference.status === 'ACCEPTED_PIPELINE' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 14px',
+                        background: '#ECFDF5',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: '6px',
+                        color: '#065F46',
+                        fontSize: '0.88rem',
+                        fontWeight: 700
+                      }}>
+                        <CheckCircle2 size={20} color="#10B981" style={{ flexShrink: 0 }} />
+                        <div>
+                          <div>✓ VALIDATED UNDERGROUND INFRASTRUCTURE DETECTED</div>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 500, color: '#047857', marginTop: '2px' }}>
+                            {imageInference.validationMessage || 'Verified underground utility pipeline detected with high confidence.'}
+                          </div>
+                        </div>
+                      </div>
 
-                  <span className="text-muted" style={{ fontSize: '0.8rem' }}>
-                    Underground Infrastructure AI
-                  </span>
+                      <div className="detection-badge-group" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {(imageInference.detections || []).map((d, i) => {
+                          const cat = (d.category || 'WATER').toUpperCase();
+                          const pillClass = cat === 'GAS' ? 'detection-pill-gas' :
+                                            cat === 'WATER' ? 'detection-pill-water' :
+                                            cat === 'ELECTRICAL' ? 'detection-pill-electrical' :
+                                            cat === 'SEWERAGE' ? 'detection-pill-sewerage' :
+                                            cat === 'OIL' ? 'detection-pill-oil' : 'detection-pill-pipe';
+                          return (
+                            <span key={`pill-${i}`} className={`detection-pill ${pillClass}`}>
+                              ● Confirmed {d.label || d.class?.toUpperCase()} ({(d.confidence * 100).toFixed(1)}% match)
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        padding: '12px 14px',
+                        background: '#FEF2F2',
+                        border: '1px solid #FECACA',
+                        borderRadius: '6px',
+                        color: '#991B1B',
+                        fontSize: '0.88rem',
+                        fontWeight: 700
+                      }}>
+                        <ShieldAlert size={20} color="#DC2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                          <div>✕ IMAGE REJECTED: UNRELATED OR NON-PIPELINE CONTENT</div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 500, color: '#B91C1C', marginTop: '4px', lineHeight: 1.4 }}>
+                            {imageInference.rejectionReason || 'No verified underground utility pipelines detected. Unrelated scene or surface object identified.'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{
+                        fontSize: '0.8rem',
+                        color: '#64748B',
+                        background: '#F8FAFC',
+                        border: '1px solid #E2E8F0',
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        lineHeight: 1.4
+                      }}>
+                        <strong>Image Policy:</strong> The vision system strictly rejects images of paved roads, buildings, vehicles, people, indoor spaces, or general surface construction. Only excavation images with exposed underground utility pipelines (water, gas, oil, sewerage, or electrical conduits) are accepted for safety scoring.
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div style={{ marginTop: '10px', padding: '10px 14px', background: '#f8fafc', borderRadius: '6px', fontSize: '0.8rem', color: '#64748b', border: '1px solid #e2e8f0' }}>
-                <strong>Specialized Detection Protocol:</strong> The vision model scans exclusively for underground utility infrastructure (water, gas, sewer, and electrical conduits). Ordinary surface objects, people, buildings, or unrelated scenery are strictly disregarded.
+              <div style={{ marginTop: '12px', padding: '10px 14px', background: '#f8fafc', borderRadius: '6px', fontSize: '0.8rem', color: '#64748b', border: '1px solid #e2e8f0' }}>
+                <strong>Strict Pipeline Validation:</strong> High-confidence morphology analysis verifies cylindrical linearity, radial shading, and excavation substrate. Unrelated surface scenery is automatically filtered out.
               </div>
             </div>
           )}

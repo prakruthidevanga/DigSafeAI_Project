@@ -146,16 +146,36 @@ router.post('/image-inference', (req, res) => {
 
     if (activeScript) {
       try {
-        const result = await runImageDetector(activeScript, req.file.buffer, 0.3);
+        const result = await runImageDetector(activeScript, req.file.buffer, 0.75);
 
-        if (result.status === 'DETECTIONS_AVAILABLE') {
+        if (result.status === 'ACCEPTED_PIPELINE' || (result.status === 'DETECTIONS_AVAILABLE' && result.detectionCount > 0)) {
           return res.json({
-            status: 'DETECTIONS_AVAILABLE',
+            status: 'ACCEPTED_PIPELINE',
+            accepted: true,
+            isValidPipelineImage: true,
             model: result.model || activeModelName,
-            detections: result.detections,
-            detectionCount: result.detectionCount,
+            detections: result.detections || [],
+            detectionCount: result.detectionCount || result.detections?.length || 0,
+            primaryUtility: result.primaryUtility || (result.detections?.[0]?.category || 'WATER'),
+            primaryLabel: result.primaryLabel || (result.detections?.[0]?.label || 'Utility Pipeline'),
+            validationMessage: result.validationMessage || 'Verified underground utility pipeline detected with high confidence.',
             imageSize: result.imageSize,
-            threshold: result.threshold,
+            threshold: result.threshold || 0.75,
+            limitation: result.limitation,
+          });
+        }
+
+        if (result.status === 'REJECTED_UNRELATED_IMAGE' || (result.status === 'DETECTIONS_AVAILABLE' && result.detectionCount === 0)) {
+          return res.json({
+            status: 'REJECTED_UNRELATED_IMAGE',
+            accepted: false,
+            isValidPipelineImage: false,
+            model: result.model || activeModelName,
+            detections: [],
+            detectionCount: 0,
+            rejectionReason: result.rejectionReason || 'Image rejected: No verified underground utility pipelines detected. Unrelated scene or surface object identified.',
+            imageSize: result.imageSize,
+            threshold: result.threshold || 0.75,
             limitation: result.limitation,
           });
         }

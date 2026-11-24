@@ -226,8 +226,11 @@ function createRiskRouter({ predictor = null } = {}) {
                 dataSource: req.body.sensors?.dataSource || 'Software Simulation',
               },
               imageInspection: {
-                performed: Boolean(imageInspection && imageInspection.detections),
-                model: imageInspection?.model || (imageInspection?.detections ? 'Faster R-CNN' : 'None'),
+                performed: Boolean(imageInspection && (imageInspection.detections || imageInspection.status)),
+                accepted: Boolean(imageInspection?.accepted),
+                status: imageInspection?.status || 'NOT_PERFORMED',
+                rejectionReason: imageInspection?.rejectionReason || null,
+                model: imageInspection?.model || (imageInspection?.detections ? 'Vision Pipeline Engine' : 'None'),
                 detectionCount: imageInspection?.detectionCount ?? (imageInspection?.detections ? imageInspection.detections.length : 0),
                 detections: imageInspection?.detections || [],
                 visualConfirmation: hazardAssessment.visualConfirmation,

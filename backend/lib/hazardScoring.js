@@ -78,18 +78,30 @@ function calculateIntegratedHazardScore({
   rawScore = Math.round(rawScore * 1000) / 1000;
 
   // Optional transparent extension for confirmed image detections
-  // When a verified pipe detection with high confidence (>0.75) is provided,
+  // When a verified pipe detection with high confidence (>=0.75) is provided,
   // document the visual finding and include transparent visual confirmation metadata
   let visualConfirmation = null;
-  if (imageInspection && Array.isArray(imageInspection.detections) && imageInspection.detections.length > 0) {
-    const pipeDetections = imageInspection.detections.filter(d => d.class === 'pipe' || d.label === 'pipe');
+  if (
+    imageInspection &&
+    imageInspection.isValidPipelineImage !== false &&
+    imageInspection.status !== 'REJECTED_UNRELATED_IMAGE' &&
+    Array.isArray(imageInspection.detections) &&
+    imageInspection.detections.length > 0
+  ) {
+    const pipeDetections = imageInspection.detections.filter(d => 
+      (d.class === 'pipe' || d.label === 'pipe' || d.infrastructure === 'UNDERGROUND_PIPELINE') &&
+      Number(d.confidence || 0) >= 0.75
+    );
     if (pipeDetections.length > 0) {
       const topPipe = pipeDetections.sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+      const categoryType = topPipe.category ? `${topPipe.category}_PIPELINE` : 'UNDERGROUND_PIPE';
       visualConfirmation = {
         detected: true,
-        type: 'UNDERGROUND_PIPE',
-        confidence: topPipe.confidence || 0.8,
-        note: 'Optical inspection image identified utility pipe feature.',
+        type: categoryType,
+        utilityType: topPipe.utilityType || 'water_pipeline',
+        label: topPipe.label || 'Utility Pipeline',
+        confidence: topPipe.confidence || 0.85,
+        note: `Optical inspection image identified verified ${topPipe.label || 'utility pipe'} feature.`,
       };
     }
   }
